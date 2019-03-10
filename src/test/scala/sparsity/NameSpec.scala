@@ -2,8 +2,18 @@ package sparsity
 
 import org.specs2.mutable.Specification
 
+object NameSpecUtils
+{
+  var testData = Map[Name,String](
+        Name("bob") -> "SOMETHING",
+        Name("alice", true) -> "SOMETHINGELSE"
+      )
+  var testMap = (name: Name) => testData.get(name)  
+}
+
 class NameSpec extends Specification 
 {
+
 
   "Sparsity Names" should { 
 
@@ -45,6 +55,14 @@ class NameSpec extends Specification
 
       data.get(Name("alice")) should be equalTo(Some("SOMETHINGELSE"))
       data.get(Name("Alice")) should be equalTo(None)
+    }
+
+    "Support Map Lookups Even When Forced" >> {
+      NameSpecUtils.testMap(Name("bob")) should be equalTo(Some("SOMETHING"))
+      NameSpecUtils.testMap(Name("Bob")) should be equalTo(Some("SOMETHING"))
+      NameSpecUtils.testMap(Name("Bob", true)) should be equalTo(None)
+      NameSpecUtils.testMap(Name("alice")) should be equalTo(Some("SOMETHINGELSE"))
+      NameSpecUtils.testMap(Name("Alice")) should be equalTo(None)
     }
 
   }
