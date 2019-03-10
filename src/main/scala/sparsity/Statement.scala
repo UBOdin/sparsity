@@ -6,7 +6,7 @@ sealed abstract class Statement;
 
 case class SelectStatement(
   body: Select, 
-  withClause: Seq[WithClause]
+  withClause: Seq[WithClause] = Seq()
 ) extends Statement
 
 case class UpdateStatement(
