@@ -1,17 +1,18 @@
-package sparsity.parser
+package sparsity
 
-import sparsity._
 import sparsity.statement._
 import fastparse._, MultiLineWhitespace._
-
+import scala.io._
+import java.io._
 
 object SQLParser
 {
-  def apply(input: String): Statement = 
-    parse(input, statement(_)) match { 
-      case Parsed.Success(statement, index) => statement
-      case f:Parsed.Failure => throw new ParseException(f)
-    }
+  def apply(input: String) = parse(input, statement(_))
+  def apply(input: Reader) = 
+    new StreamParser[Statement](
+      parse(_:Iterator[String], statement(_)), 
+      input
+    )
 
   def alias[_:P]: P[Name] = P(
     StringInIgnoreCase("AS") ~ NameParser.identifier
@@ -129,6 +130,10 @@ object SQLParser
   )
 
   def statement[_:P]: P[Statement] = 
-    P( select.map { SelectStatement(_) } )
+    P( 
+      (
+        select.map { SelectStatement(_) }
+      ) ~ ";"
+    )
 
 }

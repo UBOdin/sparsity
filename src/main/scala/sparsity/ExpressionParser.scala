@@ -1,9 +1,7 @@
-package sparsity.parser
+package sparsity
 
 import fastparse._, MultiLineWhitespace._
 import sparsity._
-
-class ParseException(f: Parsed.Failure) extends Exception(f.trace().longMsg)
 
 object ExpressionParser
 {

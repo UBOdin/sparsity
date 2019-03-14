@@ -1,16 +1,33 @@
-package sparsity.parser
+package sparsity
 
 import org.specs2.mutable._
 import org.specs2.specification._
 import org.specs2.specification.core.Fragments
 import sparsity.statement._
 import sparsity._
+import fastparse.Parsed
+
+import scala.io._
+import java.io._
 
 class SQLParserSpec extends Specification 
 {
 
   def testSelect[R](s: String)(body: Select => R) = {
-    body(SQLParser(s).asInstanceOf[SelectStatement].body)
+    SQLParser(s) match {
+      case Parsed.Success(result, index) => 
+        body(result.asInstanceOf[SelectStatement].body)
+      case Parsed.Failure(error, index, extra) => 
+        throw new RuntimeException(error)
+    }
+  }
+  def streamSelect[R](input: Reader):Iterator[Select] = {
+    SQLParser(input).map { 
+      case Parsed.Success(result, index) => 
+        result.asInstanceOf[SelectStatement].body
+      case f@Parsed.Failure(error, index, extra) =>
+        throw new RuntimeException(f.msg)
+    }
   }
 
   def e = ExpressionParser(_)
@@ -23,21 +40,21 @@ class SQLParserSpec extends Specification
 
   implicit def StringToName(s:String) = Name(s)
 
-  "The SQL Parser" should {
+  "The SELECT Parser" should {
 
     "Parse basic SELECT queries" >> {
-      testSelect("SELECT 1") { q => 
+      testSelect("SELECT 1;") { q => 
         q.target should contain(exactly(
           et("1")
         ))
       }
 
-      testSelect("SELECT A FROM R") { q => 
+      testSelect("SELECT A FROM R;") { q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
       }
 
-      testSelect("SELECT A, 1 FROM R AS Foo, S.Q AS Bar") { q => 
+      testSelect("SELECT A, 1 FROM R AS Foo, S.Q AS Bar;") { q => 
         q.target should contain(exactly(
           et("A"),
           et("1")
@@ -48,33 +65,33 @@ class SQLParserSpec extends Specification
         ))
       }
 
-      testSelect("SELECT A FROM R WHERE B = 1") { q => 
+      testSelect("SELECT A FROM R WHERE B = 1;") { q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.where should beEqualTo( Some(e("B=1")) )
       }
 
-      testSelect("SELECT A FROM R ORDER BY A, B DESC") { q => 
+      testSelect("SELECT A FROM R ORDER BY A, B DESC;") { q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.orderBy should beEqualTo( Seq(asc("A"), desc("B")) ) 
       }
 
-      testSelect("SELECT A FROM R ORDER BY A, B LIMIT 5") { q => 
+      testSelect("SELECT A FROM R ORDER BY A, B LIMIT 5;") { q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.orderBy should beEqualTo( Seq(asc("A"), asc("B")) ) 
         q.limit should beEqualTo( Some(5) )
       }
 
-      testSelect("SELECT A FROM R ORDER BY A, B OFFSET 5") { q => 
+      testSelect("SELECT A FROM R ORDER BY A, B OFFSET 5;") { q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.orderBy should beEqualTo( Seq(asc("A"), asc("B")) ) 
         q.offset should beEqualTo( Some(5) )
       }
 
-      testSelect("SELECT A FROM R ORDER BY A, B LIMIT 5 OFFSET 5") { q => 
+      testSelect("SELECT A FROM R ORDER BY A, B LIMIT 5 OFFSET 5;") { q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.orderBy should beEqualTo( Seq(asc("A"), asc("B")) ) 
@@ -84,13 +101,13 @@ class SQLParserSpec extends Specification
     }
 
     "Parse aggregate SELECT queries" >> {
-      testSelect("SELECT A FROM R GROUP BY A") { q => 
+      testSelect("SELECT A FROM R GROUP BY A;") { q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.groupBy should beEqualTo(Some(Seq(e("A"))))
       }
 
-      testSelect("SELECT A FROM R GROUP BY A HAVING COUNT(*) > 10") { q => 
+      testSelect("SELECT A FROM R GROUP BY A HAVING COUNT(*) > 10;") { q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.groupBy should beEqualTo(Some(Seq(e("A"))))
@@ -99,7 +116,7 @@ class SQLParserSpec extends Specification
     }
 
     "Parse Union queries" >> {
-      testSelect("SELECT A FROM R UNION ALL SELECT A FROM S"){ q => 
+      testSelect("SELECT A FROM R UNION ALL SELECT A FROM S;"){ q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.union must not beNone
@@ -111,7 +128,7 @@ class SQLParserSpec extends Specification
     }
 
     "Parse Nested queries" >> {
-      testSelect("SELECT A FROM (SELECT A FROM R) Q"){ q => 
+      testSelect("SELECT A FROM (SELECT A FROM R) Q;"){ q => 
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(
           FromSelect(
@@ -123,6 +140,16 @@ class SQLParserSpec extends Specification
           ):FromElement
         ))
       }
+    }
+
+    "Parse a sequence of queries" >> {
+      val queryStream = Source.fromFile("src/test/assets/queries.sql").bufferedReader
+      val selects = streamSelect(queryStream)
+
+      selects.next.target should contain(exactly(et("SUM(A)")))
+      selects.next.target should contain(exactly(et("AVG(A)")))
+      selects.next.target should contain(exactly(et("MIN(A)")))
+      
     }
 
   }

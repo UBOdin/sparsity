@@ -1,7 +1,6 @@
-package sparsity.parser
+package sparsity
 
 import org.specs2.mutable.Specification
-import sparsity._
 
 class ExpressionParserSpec extends Specification 
 {

@@ -1,4 +1,4 @@
-package sparsity.parser
+package sparsity
 
 import fastparse._, NoWhitespace._
 import sparsity._
