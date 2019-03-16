@@ -70,6 +70,9 @@ class ExpressionParserSpec extends Specification
       ExpressionParser("Foo.`Bar`") should be equalTo(
         Column(Name("Bar", true), Some(Name("Foo")))
       )
+      ExpressionParser("int") should be equalTo(
+        Column(Name("int"))
+      )
     }
 
     "Parse Strings" >> {

@@ -11,11 +11,7 @@ object ExpressionParser
       case f:Parsed.Failure => throw new ParseException(f)
     }
 
-  def expressionList[_:P] = P( 
-    (expression ~ 
-      ("," ~ expression).rep
-    ).map { x => Seq(x._1) ++ x._2 } 
-  )
+  def expressionList[_:P] = P( expression.rep(sep = Elements.comma) )
 
   def expression[_:P]: P[Expression] = P( disjunction )
 
@@ -77,7 +73,7 @@ object ExpressionParser
         )
       ) | (
         optionalNegation ~ StringInIgnoreCase("IN") ~/ "(" ~/ (
-          (&("SELECT") ~ SQLParser.select.map { 
+          (&("SELECT") ~ SQL.select.map { 
             query => InExpression(_:Expression, Right(query))
           }) | 
           expressionList.map { exprs => InExpression(_:Expression, Left(exprs)) }
@@ -118,7 +114,7 @@ object ExpressionParser
     caseWhen |
     cast |
     // need to lookahead `function` to avoid conflicts with `column`
-    &(NameParser.identifier ~ "(") ~ function | 
+    &(Elements.identifier ~ "(") ~ function | 
     column 
   )
 
@@ -127,31 +123,20 @@ object ExpressionParser
   )
 
   def primitive[_:P] = P( 
-      integer.map { v => LongPrimitive(v) } 
-    | decimal.map { v => DoublePrimitive(v) }
-    | quotedString.map { v => StringPrimitive(v) }
+      Elements.integer.map { v => LongPrimitive(v) } 
+    | Elements.decimal.map { v => DoublePrimitive(v) }
+    | Elements.quotedString.map { v => StringPrimitive(v) }
     | StringInIgnoreCase("TRUE").map { _ => BooleanPrimitive(true) }
     | StringInIgnoreCase("FALSE").map { _ => BooleanPrimitive(false) }
   )
 
-  def digits[_:P] = P( CharsWhileIn("0-9") )
-  def plusMinus[_:P] = P( "-" | "+" )
-  def integral[_:P] = ("0" | CharIn("1-9") ~ digits.?)
-
-  def integer[_:P] = (plusMinus.? ~ digits).!.map { _.toLong }
-  def decimal[_:P] = (plusMinus.? ~ digits ~ ("." ~ digits).? ~ ("e"~plusMinus.? ~ digits).?).!.map { _.toDouble }
-
-  def escapedString[_:P] = P( ( CharsWhile( _ != '\'' ) | "''" ).rep.!.map { _.replaceAll("''", "'") } )
-
-  def quotedString[_:P] = P("'" ~ escapedString ~ "'")
-
-  def column[_:P] = P(NameParser.dottedPair.map { x => Column(x._2, x._1) })
+  def column[_:P] = P(Elements.dottedPair.map { x => Column(x._2, x._1) })
 
   def function[_:P] = P(
-    (NameParser.identifier ~ "(" ~/ 
+    (Elements.identifier ~ "(" ~/ 
       StringInIgnoreCase("DISTINCT").!.?.map { _ != None } ~ 
-      ( expressionList.map { Some(_) }
-        | "*".!.map { _ => None }
+      ( "*".!.map { _ => None }
+        | expressionList.map { Some(_) }
       ) ~ ")"
     ).map { case (name, distinct, args) => 
       Function(name, args, distinct) 
@@ -180,7 +165,7 @@ object ExpressionParser
     (
       "CAST" ~/ "(" ~/
       expression ~ "AS" ~/ 
-      NameParser.rawIdentifier ~ ")"
+      Elements.rawIdentifier ~ ")"
     ).map { 
       case (expression, Name(t, _)) => Cast(expression, t)
     }

@@ -19,7 +19,7 @@ class StreamParser[R](parser:(Iterator[String] => Parsed[R]), source: Reader)
   def load
   {
     while(bufferedSource.ready){
-      buffer += bufferedSource.readLine
+      buffer += bufferedSource.readLine.replace("\\n", " ");
     }
   }
 
