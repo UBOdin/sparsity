@@ -1,7 +1,7 @@
 import scala.sys.process._
 
 name := "Sparsity"
-version := "0.1"
+version := "0.1-SNAPSHOT"
 organization := "info.mimirdb"
 scalaVersion := "2.11.11"
 
@@ -20,12 +20,12 @@ libraryDependencies ++= Seq(
 )
 
 ////// Publishing Metadata //////
-// use `sbt publish make-pom` to generate 
+// use `sbt publish makePom` to generate 
 // a publishable jar artifact and its POM metadata
 
 publishMavenStyle := true
 
-pomExtra := <url>http://mimirdb.info</url>
+pomExtra := <url>http://github.com/UBOdin/sparsity/</url>
   <licenses>
     <license>
       <name>Apache License 2.0</name>

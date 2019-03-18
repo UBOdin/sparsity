@@ -31,7 +31,7 @@ object Elements
       ) ~ 
       // avoid dropping keyword prefixes 
       // (e.g., 'int' matched by 'in')
-      !CharIn("a-zA-Z0-9") 
+      !CharIn("a-zA-Z0-9_") 
     )
   )
 
@@ -67,5 +67,4 @@ object Elements
 
   def whitespace[_:P] = CharIn(" \n\t\r").rep
   def comma[_:P] = P("," ~ whitespace)
-  def split[_:P](sep:P[_]) = P( whitespace ~ sep ~ whitespace )
 }
