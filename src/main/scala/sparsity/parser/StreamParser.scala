@@ -1,4 +1,4 @@
-package sparsity
+package sparsity.parser
 
 import scala.collection.mutable.Buffer
 import scala.io._

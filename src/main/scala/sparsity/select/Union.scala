@@ -1,4 +1,4 @@
-package sparsity.statement
+package sparsity.select
 
 object Union extends Enumeration {
   type Type = Value

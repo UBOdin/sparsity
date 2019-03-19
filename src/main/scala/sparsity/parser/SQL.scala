@@ -1,9 +1,13 @@
-package sparsity
+package sparsity.parser
 
-import sparsity.statement._
 import fastparse._, MultiLineWhitespace._
 import scala.io._
 import java.io._
+import sparsity.Name
+import sparsity.statement._
+import sparsity.select._
+import sparsity.expression.{Expression => Expr}
+import sparsity.parser.{Expression => ExprParser}
 
 object SQL
 {
@@ -17,7 +21,7 @@ object SQL
   def statement[_:P]: P[Statement] = 
     P( 
       Pass()~ // This trims off leading whitespace
-      ( select.map { SelectStatement(_) }
+      ( select.map { Select(_) }
       | update
       | delete
       | insert
@@ -26,8 +30,13 @@ object SQL
           | createView
         ))
       | dropTableOrView
+      | explain
       ) ~ ";"
     )
+
+  def explain[_:P] = P(
+    StringInIgnoreCase("EXPLAIN") ~ select.map { Explain(_) }
+  )
 
   def ifExists[_:P]:P[Boolean] = P(
     (StringInIgnoreCase("IF") ~
@@ -43,9 +52,9 @@ object SQL
       Elements.identifier
     ).map { 
       case ("TABLE", ifExists, name) => 
-        DropTableStatement(name, ifExists)
+        DropTable(name, ifExists)
       case ("VIEW", ifExists, name) => 
-        DropViewStatement(name, ifExists)
+        DropView(name, ifExists)
       case (_, _, _) =>
         throw new Exception("Internal Error")
     }
@@ -66,7 +75,7 @@ object SQL
       StringInIgnoreCase("AS") ~/
       select
     ).map { case (orReplace, name, query) => 
-              CreateViewStatement(name, orReplace, query) }
+              CreateView(name, orReplace, query) }
   )
 
   def columnAnnotation[_:P]:P[ColumnAnnotation] = P(
@@ -79,8 +88,8 @@ object SQL
     ) | (
       StringInIgnoreCase("DEFAULT") ~/
         (
-          ("(" ~ ExpressionParser.expression ~ ")")
-          | ExpressionParser.primitive
+          ("(" ~ ExprParser.expression ~ ")")
+          | ExprParser.primitive
         ).map { ColumnDefaultValue(_) }
     )
   )
@@ -121,14 +130,14 @@ object SQL
     ).map { case (orReplace, table, fields) =>
       val columns = fields.collect { case Right(r) => r }
       val annotations = fields.collect { case Left(l) => l }
-      CreateTableStatement(table, orReplace, columns, annotations)
+      CreateTable(table, orReplace, columns, annotations)
     }
   )
 
   def valueList[_:P]: P[InsertValues] = P(
     (
       StringInIgnoreCase("VALUES") ~/
-      ("(" ~/ ExpressionParser.expressionList ~ ")").rep(sep = Elements.comma)
+      ("(" ~/ ExprParser.expressionList ~ ")").rep(sep = Elements.comma)
     ).map { ExplicitInsert(_) }
   )
 
@@ -150,7 +159,7 @@ object SQL
         | (&(StringInIgnoreCase("VALUES")) ~/ valueList)
       )
     ).map { case (orReplace, table, columns, values) => 
-      InsertStatement(table, columns, values, orReplace)
+      Insert(table, columns, values, orReplace)
     }
   )
 
@@ -161,9 +170,9 @@ object SQL
       Elements.identifier ~
       (
         StringInIgnoreCase("WHERE") ~/
-        ExpressionParser.expression
+        ExprParser.expression
       ).?
-    ).map { case (table, where) => DeleteStatement(table, where) }
+    ).map { case (table, where) => Delete(table, where) }
   )
 
   def update[_:P] = P(
@@ -174,15 +183,15 @@ object SQL
       ( 
         Elements.identifier ~
         "=" ~/
-        ExpressionParser.expression
+        ExprParser.expression
       ).rep(sep = Elements.comma, min = 1) ~
       (
         StringInIgnoreCase("WHERE") ~/
-        ExpressionParser.expression
+        ExprParser.expression
       ).?
     ).map { 
       case (table, set, where) =>
-        UpdateStatement(
+        Update(
           table, 
           set, 
           where
@@ -197,7 +206,7 @@ object SQL
   def selectTarget[_:P]: P[SelectTarget] = P(
       P("*").map { _ => SelectAll() } 
     | Elements.dottedWildcard.map { SelectTable(_) }
-    | ( ExpressionParser.expression ~ alias.?).map 
+    | ( ExprParser.expression ~ alias.?).map 
         { x => SelectExpression(x._1, x._2) }
   )
 
@@ -214,17 +223,17 @@ object SQL
   )
 
   def whereClause[_:P] = P(
-    StringInIgnoreCase("WHERE") ~/ ExpressionParser.expression
+    StringInIgnoreCase("WHERE") ~/ ExprParser.expression
   )
 
   def groupByClause[_:P] = P(
     StringInIgnoreCase("GROUP") ~/
     StringInIgnoreCase("BY") ~/
-    ExpressionParser.expressionList
+    ExprParser.expressionList
   )
 
   def havingClause[_:P] = P(
-    StringInIgnoreCase("HAVING") ~ ExpressionParser.expression
+    StringInIgnoreCase("HAVING") ~ ExprParser.expression
   )
 
   def options[A](default: A, options: Map[String, A]): (Option[String] => A) =
@@ -237,7 +246,7 @@ object SQL
   )
 
   def orderBy[_:P] = P(
-    ( ExpressionParser.expression ~ ascOrDesc ).map { x => OrderBy(x._1, x._2) }
+    ( ExprParser.expression ~ ascOrDesc ).map { x => OrderBy(x._1, x._2) }
   )
 
   def orderByClause[_:P] = P(
@@ -266,7 +275,7 @@ object SQL
     (StringInIgnoreCase("UNION") ~/ allOrDistinct ~/ select)
   )
 
-  def select[_:P]: P[Select] = P( 
+  def select[_:P]: P[SelectBody] = P( 
     (
       "SELECT" ~/ 
       StringInIgnoreCase("DISTINCT").!.?.map { _ != None } ~/
@@ -280,7 +289,7 @@ object SQL
       offsetClause.? ~
       unionClause.?
     ).map { case (distinct, targets, froms, where, groupBy, having, orderBy, limit, offset, union) => 
-      Select(
+      SelectBody(
         distinct = distinct,
         target = targets,
         from = froms,

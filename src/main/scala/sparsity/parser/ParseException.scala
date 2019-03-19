@@ -1,4 +1,4 @@
-package sparsity
+package sparsity.parser
 
 import fastparse.Parsed
 

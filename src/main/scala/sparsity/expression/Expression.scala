@@ -1,4 +1,6 @@
-package sparsity
+package sparsity.expression
+
+import sparsity.Name
 
 sealed abstract class Expression
   { def needsParenthesis: Boolean }
@@ -306,7 +308,7 @@ case class Cast(expression: Expression, t: String) extends Expression
 
 case class InExpression(
   expression: Expression, 
-  source: Either[Seq[Expression], sparsity.statement.Select]
+  source: Either[Seq[Expression], sparsity.select.SelectBody]
 ) extends NegatableExpression
 {
   override def toString = 

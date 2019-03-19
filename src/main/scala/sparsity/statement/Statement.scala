@@ -1,11 +1,13 @@
-package sparsity
+package sparsity.statement
 
-import sparsity.statement._
+import sparsity.Name
+import sparsity.expression.Expression
+import sparsity.select.SelectBody
 
 sealed abstract class Statement;
 
-case class SelectStatement(
-  body: Select, 
+case class Select(
+  body: SelectBody, 
   withClause: Seq[WithClause] = Seq()
 ) extends Statement
 {
@@ -15,7 +17,7 @@ case class SelectStatement(
     body.toString+";"
 }
 
-case class UpdateStatement(
+case class Update(
   table: Name, 
   set: Seq[(Name, Expression)],
   where: Option[Expression]
@@ -26,7 +28,7 @@ case class UpdateStatement(
     where.map { " WHERE "+_ }.getOrElse("")+";"
 }
 
-case class DeleteStatement(
+case class Delete(
   table: Name, 
   where: Option[Expression]
 ) extends Statement
@@ -36,7 +38,7 @@ case class DeleteStatement(
     where.map { " WHERE "+_ }.getOrElse("")+";"
 }
 
-case class InsertStatement(
+case class Insert(
   table: Name, 
   columns: Option[Seq[Name]], 
   values: InsertValues,
@@ -50,7 +52,7 @@ case class InsertStatement(
 
 }
 
-case class CreateTableStatement(
+case class CreateTable(
   name: Name,
   orReplace: Boolean,
   columns: Seq[ColumnDefinition],
@@ -64,17 +66,17 @@ case class CreateTableStatement(
     "\n);"
 }
 
-case class CreateViewStatement(
+case class CreateView(
   name: Name,
   orReplace: Boolean,
-  query: Select
+  query: SelectBody
 ) extends Statement
 {
   override def toString() =
     s"CREATE ${if(orReplace){"OR REPLACE "}else{""}}VIEW $name AS $query;"
 }
 
-case class DropTableStatement(
+case class DropTable(
   name: Name,
   ifExists: Boolean
 ) extends Statement
@@ -85,7 +87,7 @@ case class DropTableStatement(
     )+name+";"
 }
 
-case class DropViewStatement(
+case class DropView(
   name: Name,
   ifExists: Boolean
 ) extends Statement
@@ -94,4 +96,11 @@ case class DropViewStatement(
     "DROP VIEW "+(
       if(ifExists){ "IF EXISTS "}else{""}
     )+name+";"
+}
+
+case class Explain(
+  query: SelectBody
+) extends Statement
+{
+  override def toString() = "EXPLAIN $query;"
 }

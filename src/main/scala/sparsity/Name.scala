@@ -21,4 +21,21 @@ case class Name(name: String, quoted: Boolean = false)
     else { name.equalsIgnoreCase(other) }
   }
   override def toString = if(quoted){ "`"+name+"`" } else { name }
+  def +(other: Name)   = Name(name+other.name, quoted || other.quoted)
+  def +(other: String) = Name(name+other, quoted)
+
+  def lower = if(quoted){ name } else { name.toLowerCase }
+  def upper = if(quoted){ name } else { name.toUpperCase }
+}
+
+class StringNameMatch(cmp:String)
+{
+  def unapply(name: Name):Option[Unit] = 
+    if(name.equals(cmp)) { return Some(()) } 
+    else { return None }
+}
+
+object NameMatch
+{
+  def apply(cmp: String) = new StringNameMatch(cmp)
 }

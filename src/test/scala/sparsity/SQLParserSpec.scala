@@ -5,8 +5,10 @@ import org.specs2.mutable._
 import org.specs2.specification._
 import org.specs2.specification.core.Fragments
 import sparsity.statement._
-import sparsity._
+import sparsity.select._
+import sparsity.parser.{SQL, Expression}
 import fastparse.Parsed
+import sparsity.expression.{LongPrimitive, StringPrimitive}
 
 import scala.io._
 import java.io._
@@ -14,10 +16,10 @@ import java.io._
 class SQLParserSpec extends Specification 
 {
 
-  def testSelect(s: String)(body: Select => MatchResult[_]) = {
+  def testSelect(s: String)(body: SelectBody => MatchResult[_]) = {
     SQL(s) match {
       case Parsed.Success(result, index) => 
-        body(result.asInstanceOf[SelectStatement].body)
+        body(result.asInstanceOf[Select].body)
       case f@Parsed.Failure(error, index, extra) => 
         throw new RuntimeException(f.trace().longMsg)
     }
@@ -31,16 +33,16 @@ class SQLParserSpec extends Specification
         throw new RuntimeException(f.trace().longMsg)
     }
   }
-  def streamSelect(input: Reader):Iterator[Select] = {
+  def streamSelect(input: Reader):Iterator[SelectBody] = {
     SQL(input).map { 
       case Parsed.Success(result, index) => 
-        result.asInstanceOf[SelectStatement].body
+        result.asInstanceOf[Select].body
       case f@Parsed.Failure(error, index, extra) =>
         throw new RuntimeException(f.msg)
     }
   }
 
-  def e = ExpressionParser(_)
+  def e = Expression(_)
   def et(s:String):SelectTarget = SelectExpression(e(s))
   def f(t:Name):FromElement                 = FromTable(None, t, None)
   def f(t:Name, a:Name):FromElement         = FromTable(None, t, Some(a))
@@ -142,7 +144,7 @@ class SQLParserSpec extends Specification
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(
           FromSelect(
-            Select(
+            SelectBody(
               target = Seq(et("A")), 
               from = Seq(f("R"))
             ),
@@ -168,19 +170,19 @@ class SQLParserSpec extends Specification
 
     "parse UPDATE statements" >> {
 
-      statement[UpdateStatement]("UPDATE foo SET bar = foo.baz + 2 WHERE foo.zing < 2;") 
+      statement[Update]("UPDATE foo SET bar = foo.baz + 2 WHERE foo.zing < 2;") 
       { stmt => 
           stmt.table must beEqualTo("foo")
           stmt.set must contain(exactly((Name("bar"), e("foo.baz + 2"))))
           stmt.where must beEqualTo(Some(e("foo.zing < 2")))
       }
-      statement[UpdateStatement]("UPDATE foo SET bar = foo.baz + 2;")
+      statement[Update]("UPDATE foo SET bar = foo.baz + 2;")
       { stmt =>
           stmt.table must beEqualTo("foo")
           stmt.set must contain(exactly((Name("bar"), e("foo.baz + 2"))))
           stmt.where must beEqualTo(None)
       }
-      statement[UpdateStatement]("UPDATE foo SET bar = foo.baz + 2, zing = 29;")
+      statement[Update]("UPDATE foo SET bar = foo.baz + 2, zing = 29;")
       { stmt =>
           stmt.table must beEqualTo("foo")
           stmt.set must contain(exactly(
@@ -193,11 +195,11 @@ class SQLParserSpec extends Specification
 
     "parse DELETE statements" >> {
 
-      statement[DeleteStatement]("DELETE FROM foo;"){ stmt =>
+      statement[Delete]("DELETE FROM foo;"){ stmt =>
         stmt.table must beEqualTo("foo")
         stmt.where must beEqualTo(None)
       }
-      statement[DeleteStatement]("DELETE FROM foo WHERE baz<2;"){ stmt =>
+      statement[Delete]("DELETE FROM foo WHERE baz<2;"){ stmt =>
         stmt.table must beEqualTo("foo")
         stmt.where must beEqualTo(Some(e("baz < 2")))
       }
@@ -206,7 +208,7 @@ class SQLParserSpec extends Specification
 
     "parse INSERT statements" >> {
 
-      statement[InsertStatement]("INSERT INTO foo(bar, baz) VALUES (1, 2);"){ stmt =>
+      statement[Insert]("INSERT INTO foo(bar, baz) VALUES (1, 2);"){ stmt =>
         stmt.table must beEqualTo("foo")
         stmt.columns.get must contain(exactly(
           Name("bar"), Name("baz")
@@ -218,7 +220,7 @@ class SQLParserSpec extends Specification
         )
         stmt.orReplace must beEqualTo(false)
       }
-      statement[InsertStatement]("INSERT INTO foo(bar) VALUES (1), (2);"){ stmt =>
+      statement[Insert]("INSERT INTO foo(bar) VALUES (1), (2);"){ stmt =>
         stmt.table must beEqualTo("foo")
         stmt.columns.get must contain(exactly(
           Name("bar")
@@ -232,11 +234,11 @@ class SQLParserSpec extends Specification
         )
         stmt.orReplace must beEqualTo(false)
       }
-      statement[InsertStatement]("INSERT OR REPLACE INTO foo SELECT 1 FROM foo;"){ stmt =>
+      statement[Insert]("INSERT OR REPLACE INTO foo SELECT 1 FROM foo;"){ stmt =>
         stmt.table must beEqualTo("foo")
         stmt.columns must beEqualTo(None)
         stmt.values must beEqualTo(
-          SelectInsert(Select(
+          SelectInsert(SelectBody(
             target = Seq(et("1")),
             from = Seq(f("foo"))
           ))
@@ -248,7 +250,7 @@ class SQLParserSpec extends Specification
 
     "parse CREATE TABLE statements" >> {
 
-      statement[CreateTableStatement]("""
+      statement[CreateTable]("""
         CREATE OR REPLACE TABLE foo(
           bar int, 
           baz string DEFAULT 'foo', 
@@ -277,14 +279,14 @@ class SQLParserSpec extends Specification
 
     "parse CREATE VIEW statements" >> {
 
-      statement[CreateViewStatement](
+      statement[CreateView](
         "CREATE VIEW foo AS SELECT * FROM bar;"
       ) { stmt => 
         stmt.name must beEqualTo(Name("foo"))
         stmt.query.from must contain(exactly(f("bar")))
         stmt.orReplace must beFalse
       }
-      statement[CreateViewStatement](
+      statement[CreateView](
         "CREATE OR REPLACE VIEW foo AS SELECT * FROM bar;"
       ) { stmt => 
         stmt.name must beEqualTo(Name("foo"))
@@ -295,12 +297,12 @@ class SQLParserSpec extends Specification
     }
 
     "parse DROP TABLE statements" >> {
-      statement[DropTableStatement](
+      statement[DropTable](
         "DROP TABLE foo;"
       ) { stmt => 
         stmt.name must beEqualTo(Name("foo"))
       }
-      statement[DropTableStatement](
+      statement[DropTable](
         "DROP TABLE IF EXISTS foo;"
       ) { stmt => 
         stmt.name must beEqualTo(Name("foo"))
@@ -308,12 +310,12 @@ class SQLParserSpec extends Specification
     }
 
     "parse DROP VIEW statements" >> {
-      statement[DropViewStatement](
+      statement[DropView](
         "DROP VIEW foo;"
       ) { stmt => 
         stmt.name must beEqualTo(Name("foo"))
       }
-      statement[DropViewStatement](
+      statement[DropView](
         "DROP VIEW IF EXISTS foo;"
       ) { stmt => 
         stmt.name must beEqualTo(Name("foo"))

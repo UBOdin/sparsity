@@ -1,9 +1,10 @@
-package sparsity
+package sparsity.parser
 
 import fastparse._, MultiLineWhitespace._
-import sparsity._
+import sparsity.Name
+import sparsity.expression._
 
-object ExpressionParser
+object Expression
 {
   def apply(input: String): Expression =
     parse(input, expression(_)) match { 

@@ -1,6 +1,7 @@
 package sparsity.statement
 
-import sparsity.{Expression, Column, Name}
+import sparsity.expression.Expression
+import sparsity.Name
 
 sealed abstract class ColumnAnnotation
 

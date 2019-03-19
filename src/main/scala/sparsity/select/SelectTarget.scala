@@ -1,6 +1,7 @@
-package sparsity.statement
+package sparsity.select
 
-import sparsity.{Name, Expression}
+import sparsity.Name
+import sparsity.expression.Expression
 
 sealed abstract class SelectTarget
 

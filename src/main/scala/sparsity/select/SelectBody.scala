@@ -1,8 +1,8 @@
-package sparsity.statement
+package sparsity.select
 
-import sparsity.Expression
+import sparsity.expression.Expression
 
-case class Select(
+case class SelectBody(
   distinct: Boolean = false,
   target: Seq[SelectTarget] = Seq(),
   from: Seq[FromElement] = Seq(),
@@ -12,5 +12,5 @@ case class Select(
   orderBy: Seq[OrderBy] = Seq(),
   limit: Option[Long] = None,
   offset: Option[Long] = None,
-  union: Option[(Union.Type, Select)] = None
+  union: Option[(Union.Type, SelectBody)] = None
 )
