@@ -166,9 +166,9 @@ object Expression
     (
       "CAST" ~/ "(" ~/
       expression ~ "AS" ~/ 
-      Elements.rawIdentifier ~ ")"
+      Elements.identifier ~ ")"
     ).map { 
-      case (expression, Name(t, _)) => Cast(expression, t)
+      case (expression, t) => Cast(expression, t)
     }
   )
 }

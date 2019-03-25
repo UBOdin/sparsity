@@ -26,6 +26,14 @@ case class Name(name: String, quoted: Boolean = false)
 
   def lower = if(quoted){ name } else { name.toLowerCase }
   def upper = if(quoted){ name } else { name.toUpperCase }
+
+  def extendUpper(template:String) = 
+    Name(template.replace("\\$", upper), quoted)
+  def extendLower(template:String) = 
+    Name(template.replace("\\$", lower), quoted)
+
+  def withPrefix(other: String) = Name(other+name, quoted)
+  def withSuffix(other: String) = Name(name+other, quoted)
 }
 
 class StringNameMatch(cmp:String)

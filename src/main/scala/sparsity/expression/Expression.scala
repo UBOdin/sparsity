@@ -3,7 +3,11 @@ package sparsity.expression
 import sparsity.Name
 
 sealed abstract class Expression
-  { def needsParenthesis: Boolean }
+{ 
+  def needsParenthesis: Boolean 
+  def children: Seq[Expression]
+  def rebuild(newChildren: Seq[Expression]): Expression
+}
 
 object Expression
 {
@@ -16,6 +20,8 @@ object Expression
 sealed abstract class PrimitiveValue extends Expression
 {
   def needsParenthesis = false
+  def children:Seq[Expression] = Seq()
+  def rebuild(newChildren: Seq[Expression]):Expression = this
 }
 case class LongPrimitive(v: Long) extends PrimitiveValue
   { override def toString = v.toString }
@@ -35,12 +41,14 @@ case class Column(column: Name, table: Option[Name] = None) extends Expression
 { 
   override def toString = (table.toSeq ++ Seq(column)).mkString(".") 
   def needsParenthesis = false
+  def children:Seq[Expression] = Seq()
+  def rebuild(newChildren: Seq[Expression]):Expression = this
 }
 /**
  * Any simple binary arithmetic expression
  * See Arithmetic.scala for an enumeration of the possibilities
  * *not* a case class to avoid namespace collisions.  
- * $Arithmetic defines apply/unapply explicitly
+ * Arithmetic defines apply/unapply explicitly
  */
 class Arithmetic(
   val lhs: Expression, 
@@ -58,6 +66,8 @@ class Arithmetic(
       case Arithmetic(otherlhs, otherop, otherrhs) => lhs.equals(otherlhs) && (op == otherop) && rhs.equals(otherrhs)
       case _ => false
     }
+  def children:Seq[Expression] = Seq(lhs, rhs)
+  def rebuild(c: Seq[Expression]): Expression = Arithmetic(c(0), op, c(1))
 }
 
 object Arithmetic extends Enumeration {
@@ -137,7 +147,7 @@ object Arithmetic extends Enumeration {
  * Any simple comparison expression
  * See Comparison.scala for an enumeration of the possibilities
  * *not* a case class to avoid namespace collisions.  
- * $Comparison defines apply/unapply explicitly
+ * Comparison defines apply/unapply explicitly
  */
 class Comparison(
   val lhs: Expression, 
@@ -155,6 +165,8 @@ class Comparison(
       case Comparison(otherlhs, otherop, otherrhs) => lhs.equals(otherlhs) && (op == otherop) && rhs.equals(otherrhs)
       case _ => false
     }
+  def children:Seq[Expression] = Seq(lhs, rhs)
+  def rebuild(c: Seq[Expression]): Expression = Comparison(c(0), op, c(1))
 }
 object Comparison extends Enumeration {
   type Op = Value
@@ -232,12 +244,17 @@ case class Function(name: Name, params: Option[Seq[Expression]], distinct: Boole
       params.map{ _.mkString(", ")}.getOrElse("*")+
     ")" 
   def needsParenthesis = false
+  def children:Seq[Expression] = params.getOrElse { Seq() }
+  def rebuild(c: Seq[Expression]): Expression = 
+    Function(name, params.map { _ => c }, distinct)
 }
 
 case class JDBCVar() extends Expression
 {
   override def toString = "?"
   def needsParenthesis = false
+  def children: Seq[Expression] = Seq()
+  def rebuild(c: Seq[Expression]): Expression = this  
 }
 
 case class CaseWhenElse(
@@ -257,6 +274,19 @@ case class CaseWhenElse(
     "ELSE "+ otherwise.toString+" END"
   }
   def needsParenthesis = false
+  def children: Seq[Expression] = 
+    target.toSeq ++ Seq(otherwise) ++ cases.flatMap { x => Seq(x._1, x._2) }
+  def rebuild(c: Seq[Expression]): Expression = 
+  {
+    val (newTarget, newOtherwise, newCases) = 
+      if(c.length % 2 == 0){ (Some(c.head), c.tail.head, c.tail.tail) }
+      else { (None, c.head, c.tail) }
+    CaseWhenElse(
+      newTarget, 
+      newCases.grouped(2).map { x => (x(0), x(1)) }.toSeq,
+      newOtherwise
+    )
+  }
 }
 
 abstract class NegatableExpression extends Expression
@@ -271,6 +301,8 @@ case class IsNull(target: Expression) extends NegatableExpression
   def toNegatedString =
     Expression.parenthesize(target)+" IS NOT NULL"
   def needsParenthesis = false
+  def children: Seq[Expression] = Seq(target)
+  def rebuild(c: Seq[Expression]): Expression = IsNull(c(0))
 }
 
 case class Not(target: Expression) extends Expression
@@ -281,6 +313,8 @@ case class Not(target: Expression) extends Expression
       case _ => "NOT "+Expression.parenthesize(target)
     }
   def needsParenthesis = false
+  def children: Seq[Expression] = Seq(target)
+  def rebuild(c: Seq[Expression]): Expression = Not(c(0))
 }
 
 case class IsBetween(lhs:Expression, low:Expression, high:Expression) extends NegatableExpression
@@ -298,12 +332,16 @@ case class IsBetween(lhs:Expression, low:Expression, high:Expression) extends Ne
     " AND " +
     Expression.parenthesize(high)
   def needsParenthesis = true
+  def children: Seq[Expression] = Seq(lhs, low, high)
+  def rebuild(c: Seq[Expression]): Expression = IsBetween(c(0), c(1), c(2))
 }
 
-case class Cast(expression: Expression, t: String) extends Expression
+case class Cast(expression: Expression, t: Name) extends Expression
 {
   override def toString = "CAST("+expression.toString+" AS "+t+")"
   def needsParenthesis = false
+  def children: Seq[Expression] = Seq(expression)
+  def rebuild(c: Seq[Expression]): Expression = Cast(c(0), t)
 }
 
 case class InExpression(
@@ -321,4 +359,16 @@ case class InExpression(
       case Left(elems) => elems.map { Expression.parenthesize(_) }.mkString(", ")
       case Right(query) => "("+query.toString+")"
     }
+  def children: Seq[Expression] = 
+    Seq(expression) ++ (source match { 
+          case Left(expr) => expr
+          case Right(_) => Seq()
+        })
+  def rebuild(c: Seq[Expression]): Expression = 
+    InExpression(c.head,
+      source match { 
+        case Left(_) => Left(c.tail)
+        case Right(query) => Right(query)
+      }
+    ) 
 }
