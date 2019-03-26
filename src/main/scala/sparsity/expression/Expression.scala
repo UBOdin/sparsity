@@ -28,9 +28,9 @@ case class LongPrimitive(v: Long) extends PrimitiveValue
 case class DoublePrimitive(v: Double) extends PrimitiveValue
   { override def toString = v.toString }
 case class StringPrimitive(v: String) extends PrimitiveValue
-  { override def toString = v.toString }
-case class BooleanPrimitive(v: Boolean) extends PrimitiveValue
   { override def toString = "'"+Expression.escapeString(v.toString)+"'" }
+case class BooleanPrimitive(v: Boolean) extends PrimitiveValue
+  { override def toString = v.toString }
 case class NullPrimitive() extends PrimitiveValue
   { override def toString = "NULL" }
 

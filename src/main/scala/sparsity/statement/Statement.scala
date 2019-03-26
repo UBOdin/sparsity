@@ -11,10 +11,11 @@ case class Select(
   withClause: Seq[WithClause] = Seq()
 ) extends Statement
 {
-  override def toString() =
-    if(withClause.isEmpty){ "" }
-    else { "WITH "+withClause.mkString(",\n")+"\n" } +
+  override def toString() = (
+    (if(withClause.isEmpty){ "" }
+    else { "WITH "+withClause.mkString(",\n")+"\n" }) +
     body.toString+";"
+  )
 }
 
 case class Update(
@@ -24,7 +25,7 @@ case class Update(
 ) extends Statement
 {
   override def toString() =
-    s"UPDATE $table SET ${set.map { x => x._1.toString + " = " + x._2 }.mkString(",")}"+
+    s"UPDATE $table SET ${set.map { x => x._1.toString + " = " + x._2 }.mkString(", ")}"+
     where.map { " WHERE "+_ }.getOrElse("")+";"
 }
 
@@ -46,9 +47,9 @@ case class Insert(
 ) extends Statement
 {
   override def toString() =
-    s"INSERT ${if(orReplace){ " OR REPLACE " }else{""}} INTO $table("+
-    columns.mkString(", ")+
-    s") $values;"
+    s"INSERT${if(orReplace){ " OR REPLACE " }else{""}} INTO $table"+
+    columns.map { "("+_.mkString(", ")+")" }.getOrElse("")+
+    " "+values.toString+";"
 
 }
 
@@ -60,10 +61,10 @@ case class CreateTable(
 ) extends Statement
 {
   override def toString() =
-    s"CREATE ${if(orReplace){"OR REPLACE "}else{""}}TABLE $name(\n"+
+    s"CREATE ${if(orReplace){"OR REPLACE "}else{""}}TABLE $name("+
     (columns.map { _.toString } ++ 
-      annotations.map { _.toString }).mkString(", \n")+
-    "\n);"
+      annotations.map { _.toString }).mkString(", ")+
+    ");"
 }
 
 case class CreateView(
@@ -102,5 +103,5 @@ case class Explain(
   query: SelectBody
 ) extends Statement
 {
-  override def toString() = "EXPLAIN $query;"
+  override def toString() = s"EXPLAIN $query;"
 }

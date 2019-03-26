@@ -12,6 +12,5 @@ case class ExplicitInsert(values: Seq[Seq[Expression]]) extends InsertValues
 }
 case class SelectInsert(query: SelectBody) extends InsertValues
 {
-  override def toString() =
-    "("+query+")"
+  override def toString() = query.toString
 }

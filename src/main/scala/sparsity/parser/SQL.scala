@@ -115,9 +115,13 @@ object SQL
       (
         Elements.identifier ~/ 
           Elements.identifier ~ 
+            ( "(" ~
+              ExprParser.primitive.rep( sep = "," ) ~ 
+              ")"
+            ).?.map { _.getOrElse(Seq()) } ~
             columnAnnotation.rep
-      ).map { case (name, t, annotations) =>
-                 Right(ColumnDefinition(name, t, annotations)) }
+      ).map { case (name, t, args, annotations) =>
+                 Right(ColumnDefinition(name, t, args, annotations)) }
     )
 
   )

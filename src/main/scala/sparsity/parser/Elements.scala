@@ -59,7 +59,7 @@ object Elements
   def plusMinus[_:P] = P( "-" | "+" )
   def integral[_:P] = ("0" | CharIn("1-9") ~ digits.?)
 
-  def integer[_:P] = (plusMinus.? ~ digits).!.map { _.toLong }
+  def integer[_:P] = (plusMinus.? ~ digits).!.map { _.toLong } ~ !(".") // Fail on a trailing period
   def decimal[_:P] = (plusMinus.? ~ digits ~ ("." ~ digits).? ~ ("e"~plusMinus.? ~ digits).?).!.map { _.toDouble }
 
   def escapedString[_:P] = P( ( CharsWhile( _ != '\'' ) | "''" ).rep.!.map { _.replaceAll("''", "'") } )

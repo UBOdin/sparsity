@@ -11,10 +11,16 @@ sealed abstract class FromElement
 case class FromTable(schema: Option[Name], table: Name, alias: Option[Name]) extends FromElement
 {
   def aliases = Seq(alias.getOrElse(table))
+  override def toString = 
+    schema.map { _.toString+"."}.getOrElse("") +
+    table.toString + 
+    alias.map { " AS "+_.toString }.getOrElse("")
 }
 case class FromSelect(body: SelectBody, val alias: Name) extends FromElement
 {
   def aliases = Seq(alias)
+  override def toString =
+    "(" + body.toString + ") AS "+alias
 }
 case class FromJoin(
   lhs: FromElement, 
@@ -25,10 +31,31 @@ case class FromJoin(
 { 
   def aliases = 
     alias.map { Seq(_) }.getOrElse(lhs.aliases ++ rhs.aliases)
+  override def toString = {
+    val baseString = (
+      lhs.toString + " " + 
+      Join.toString(t) + " " +
+      rhs.toString + 
+      (on match { case BooleanPrimitive(true)  => ""; case _ => " ON " + on.toString })
+    )
+    alias match {
+      case Some(a) => "(" + baseString + ") AS "+a.toString
+      case None => baseString
+    }
+  }
+
 }
 
 object Join extends Enumeration
 {
   type Type = Value
   val  Inner, Natural, LeftOuter, RightOuter, FullOuter = Value
+
+  def toString(t: Type) = t match {
+    case Inner => "JOIN"
+    case Natural => "NATURAL JOIN"
+    case LeftOuter => "LEFT OUTER JOIN"
+    case RightOuter => "RIGHT OUTER JOIN"
+    case FullOuter => "FULL OUTER JOIN"
+  }
 }
