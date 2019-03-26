@@ -1,13 +1,13 @@
 stages:
-  - test
+  - deploy
 
 test:
   stage: test
   script:
     - sbt test
 
-publish:
-  stage: publish
+deploy:
+  stage: deploy
   only: 
     - master
   script:
