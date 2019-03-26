@@ -266,10 +266,10 @@ class SQLParserSpec extends Specification
         stmt.name must beEqualTo(Name("foo"))
         stmt.columns must contain(exactly(
           ColumnDefinition(Name("bar"), "int"),
-          ColumnDefinition(Name("baz"), "string", Seq(
+          ColumnDefinition(Name("baz"), "string", annotations = Seq(
             ColumnDefaultValue(e("'foo'"))
           )),
-          ColumnDefinition(Name("broz"), "int", Seq(
+          ColumnDefinition(Name("broz"), "int", annotations = Seq(
             ColumnIsNotNullable(),
             ColumnIsPrimaryKey()
           ))

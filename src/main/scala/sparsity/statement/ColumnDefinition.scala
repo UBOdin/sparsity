@@ -18,7 +18,7 @@ case class ColumnDefaultValue(v: Expression) extends ColumnAnnotation
   override def toString = "DEFAULT VALUE "+v.toString
 }
 
-case class ColumnDefinition(name: Name, t: Name, args: Seq[PrimitiveValue], annotations: Seq[ColumnAnnotation] = Seq())
+case class ColumnDefinition(name: Name, t: Name, args: Seq[PrimitiveValue] = Seq(), annotations: Seq[ColumnAnnotation] = Seq())
 {
   override def toString = (
     name.toString + " " + 
