@@ -1,0 +1,14 @@
+stages:
+  - test
+
+test:
+  stage: test
+  script:
+    - sbt test
+
+publish:
+  stage: publish
+  only: 
+    - master
+  script:
+    - sbt publish
