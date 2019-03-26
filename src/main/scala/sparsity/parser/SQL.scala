@@ -11,12 +11,15 @@ import sparsity.parser.{Expression => ExprParser}
 
 object SQL
 {
-  def apply(input: String) = parse(input, statement(_))
+  def apply(input: String) = parse(input, terminatedStatement(_))
   def apply(input: Reader) = 
     new StreamParser[Statement](
-      parse(_:Iterator[String], statement(_)), 
+      parse(_:Iterator[String], terminatedStatement(_)), 
       input
     )
+
+  def terminatedStatement[_:P]: P[Statement] = 
+    P( statement ~ ";" )
 
   def statement[_:P]: P[Statement] = 
     P( 
@@ -31,7 +34,7 @@ object SQL
         ))
       | dropTableOrView
       | explain
-      ) ~ ";"
+      )
     )
 
   def explain[_:P] = P(

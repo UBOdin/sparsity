@@ -125,6 +125,11 @@ class SQLParserSpec extends Specification
         q.groupBy should beEqualTo(Some(Seq(e("A"))))
         q.having should beEqualTo(Some(e("COUNT(*) > 10")))
       }
+
+      testSelect("SELECT A, SUM(B) FROM R GROUP BY A;") { q =>
+        q.target should contain(exactly(et("A"), et("SUM(B)")))
+        q.groupBy should beEqualTo(Some(Seq(e("A"))))
+      }
     }
 
     "Parse Union queries" >> {
