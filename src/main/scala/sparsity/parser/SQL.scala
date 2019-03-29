@@ -6,6 +6,7 @@ import java.io._
 import sparsity.Name
 import sparsity.statement._
 import sparsity.select._
+import sparsity.alter._
 import sparsity.expression.{Expression => Expr}
 import sparsity.parser.{Expression => ExprParser}
 
@@ -32,6 +33,9 @@ object SQL
             createTable 
           | createView
         ))
+      | (&(StringInIgnoreCase("ALTER")) ~/ (
+            alterView
+        ))
       | dropTableOrView
       | explain
       )
@@ -45,6 +49,19 @@ object SQL
     (StringInIgnoreCase("IF") ~
       StringInIgnoreCase("EXISTS")
     ).!.?.map { _ != None }
+  )
+
+  def alterView[_:P] = P(
+    (
+      StringInIgnoreCase("ALTER") ~
+      StringInIgnoreCase("VIEW") ~/
+      Elements.identifier ~
+      (
+          (StringInIgnoreCase("MATERIALIZE").!.map { _ => Materialize(true) })
+        | ( StringInIgnoreCase("DROP") ~
+            StringInIgnoreCase("MATERIALIZE").!.map { _ => Materialize(false) })
+      )
+    ).map { case (name, op) => AlterView(name, op) }
   )
 
   def dropTableOrView[_:P] = P(
@@ -73,12 +90,13 @@ object SQL
     (
       StringInIgnoreCase("CREATE") ~
       orReplace ~
+      StringInIgnoreCase("MATERIALIZED").!.?.map { _ != None } ~
       StringInIgnoreCase("VIEW") ~/
       Elements.identifier ~
       StringInIgnoreCase("AS") ~/
       select
-    ).map { case (orReplace, name, query) => 
-              CreateView(name, orReplace, query) }
+    ).map { case (orReplace, materialized, name, query) => 
+              CreateView(name, orReplace, query, materialized) }
   )
 
   def columnAnnotation[_:P]:P[ColumnAnnotation] = P(

@@ -3,6 +3,7 @@ package sparsity.statement
 import sparsity.Name
 import sparsity.expression.Expression
 import sparsity.select.SelectBody
+import sparsity.alter._
 
 sealed abstract class Statement;
 
@@ -70,12 +71,26 @@ case class CreateTable(
 case class CreateView(
   name: Name,
   orReplace: Boolean,
-  query: SelectBody
+  query: SelectBody,
+  materialized: Boolean = false
 ) extends Statement
 {
-  override def toString() =
-    s"CREATE ${if(orReplace){"OR REPLACE "}else{""}}VIEW $name AS $query;"
+  override def toString() = (
+    "CREATE "+
+    (if(orReplace){"OR REPLACE "} else {""})+
+    (if(materialized){"MATERIALIZED "} else {""})+
+    s"VIEW $name AS $query;"
+  )
 }
+
+case class AlterView(
+  name: Name,
+  action: AlterViewAction
+) extends Statement
+{
+  override def toString = s"ALTER VIEW $name $action"
+}
+
 
 case class DropTable(
   name: Name,
