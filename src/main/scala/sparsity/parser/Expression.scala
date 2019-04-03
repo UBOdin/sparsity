@@ -17,7 +17,7 @@ object Expression
   def expression[_:P]: P[Expression] = P( disjunction )
 
   def disjunction[_:P] = P(
-    (conjunction ~ (StringInIgnoreCase("OR") ~ conjunction).rep).map 
+    (conjunction ~ (!(StringInIgnoreCase("ORDER")) ~ StringInIgnoreCase("OR") ~ conjunction).rep).map 
       { x => x._2.fold(x._1) { 
         (accum, current) => Arithmetic(accum, Arithmetic.Or, current)
       }

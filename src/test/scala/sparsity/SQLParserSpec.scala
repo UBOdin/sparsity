@@ -110,6 +110,10 @@ class SQLParserSpec extends Specification
         q.offset should beEqualTo( Some(5) )
         q.limit should beEqualTo( Some(5) )
       }
+
+      testSelect("SELECT DOB FROM DetectSeriesTest2 WHERE Rank = 1 ORDER BY DOB;") { q =>
+        q.orderBy should beEqualTo( Seq(asc("DOB")) )
+      }
     }
 
     "Parse aggregate SELECT queries" >> {
@@ -159,6 +163,15 @@ class SQLParserSpec extends Specification
       }
     }
 
+    "Parse JOIN queries" >> {
+      testSelect("SELECT R.A, S.C FROM R NATURAL JOIN S ON R.B = S.B;"){ q => 
+        q.from(0) should beAnInstanceOf[FromJoin]
+      }
+      testSelect("SELECT R.A, S.C FROM R JOIN S ON R.B = S.B;"){ q => 
+        q.from(0) should beAnInstanceOf[FromJoin]
+      }
+    }
+
     "Parse a sequence of queries" >> {
       val queryStream = Source.fromFile("src/test/resources/queries.sql").bufferedReader
       val selects = streamSelect(queryStream)
@@ -168,6 +181,17 @@ class SQLParserSpec extends Specification
       selects.next.target should contain(exactly(et("MIN(A)")))
       selects.next.target should contain(exactly(et("MAX(A)")))
       
+    }
+
+    "Parse multiline queries" >> {
+      testSelect("""SELECT A, B FROM R
+  UNION
+SELECT A, B FROM R
+  UNION
+SELECT A, B FROM R;""") { q => 
+        q.union should not be equalTo(None)
+        q.union.get._2.union should not be equalTo(None)
+      }
     }
   }
 

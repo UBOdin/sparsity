@@ -7,7 +7,7 @@ import sparsity.Name
 import sparsity.statement._
 import sparsity.select._
 import sparsity.alter._
-import sparsity.expression.{Expression => Expr}
+import sparsity.expression.{Expression => Expr, BooleanPrimitive}
 import sparsity.parser.{Expression => ExprParser}
 
 object SQL
@@ -235,11 +235,57 @@ object SQL
         { x => SelectExpression(x._1, x._2) }
   )
 
-  def fromElement[_:P] = P(
+  def simpleFromElement[_:P]: P[FromElement] = P(
       (("(" ~ select ~ ")" ~ alias).map { x => FromSelect(x._1, x._2) })
     | ((Elements.dottedPair ~ alias.?).map { 
         case (schema, table, alias) => FromTable(schema, table, alias)
       })
+    | (("(" ~ fromElement ~ ")" ~ alias.?).map { 
+        case (from, None)        => from
+        case (from, Some(alias)) => from.withAlias(alias)
+      })
+  )
+
+  def joinWith[_:P]: P[Join.Type] = P(
+      StringInIgnoreCase("JOIN").map { Unit => Join.Inner } 
+    | ( (
+          StringInIgnoreCase("NATURAL").!.map { Unit => Join.Natural}
+        | StringInIgnoreCase("INNER").map { Unit => Join.Inner }
+        | ( ( 
+                StringInIgnoreCase("LEFT").map { Unit => Join.LeftOuter }
+              | StringInIgnoreCase("RIGHT").map { Unit => Join.RightOuter }
+              | StringInIgnoreCase("FULL").map { Unit => Join.FullOuter }
+            ).?.map { _.getOrElse(Join.FullOuter) } ~/
+            StringInIgnoreCase("OUTER")
+          )
+        ) ~/ StringInIgnoreCase("JOIN")
+      )
+  )
+
+  def fromElement[_:P]: P[FromElement] = P(
+    (
+      simpleFromElement ~ (
+        &(joinWith) ~
+        joinWith ~/
+        simpleFromElement ~/
+        (
+          StringInIgnoreCase("ON") ~/
+          ExprParser.expression
+        ).? ~
+        alias.?
+      ).rep 
+    ).map { case (lhs, rest) => 
+      rest.foldLeft(lhs) { (lhs, next) =>
+        val (t, rhs, onClause, alias) = next
+        FromJoin(
+          lhs, 
+          rhs, 
+          t, 
+          onClause.getOrElse(BooleanPrimitive(true)), 
+          alias
+        )
+      }
+    }
   )
 
   def fromClause[_:P] = P(
@@ -302,7 +348,7 @@ object SQL
 
   def select[_:P]: P[SelectBody] = P( 
     (
-      "SELECT" ~/ 
+      StringInIgnoreCase("SELECT") ~/ 
       StringInIgnoreCase("DISTINCT").!.?.map { _ != None } ~/
       selectTarget.rep(sep = ",") ~
       fromClause.?.map { _.toSeq.flatten } ~

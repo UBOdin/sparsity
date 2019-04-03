@@ -27,7 +27,14 @@ object Elements
         "ALL",
         "DISTINCT",
         "UNION",
-        "ORDER"
+        "ORDER",
+        "NATURAL",
+        "INNER",
+        "RIGHT",
+        "LEFT",
+        "OUTER",
+        "JOIN",
+        "ON"
       ) ~ 
       // avoid dropping keyword prefixes 
       // (e.g., 'int' matched by 'in')
