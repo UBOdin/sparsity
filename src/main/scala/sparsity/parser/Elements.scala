@@ -69,7 +69,8 @@ object Elements
   def integer[_:P] = (plusMinus.? ~ digits).!.map { _.toLong } ~ !(".") // Fail on a trailing period
   def decimal[_:P] = (plusMinus.? ~ digits ~ ("." ~ digits).? ~ ("e"~plusMinus.? ~ digits).?).!.map { _.toDouble }
 
-  def escapedString[_:P] = P( ( CharsWhile( _ != '\'' ) | "''" ).rep.!.map { _.replaceAll("''", "'") } )
+  def escapeQuote[_: P] = P( ("''").!.map { _.replaceAll("''", "'") } )
+  def escapedString[_:P] = P( ( CharsWhile( _ != '\'' ) | escapeQuote ).rep.!.map { _.replaceAll("''", "'") } )
   def quotedString[_:P] = P("'" ~ escapedString ~ "'")
 
   def whitespace[_:P] = CharIn(" \n\t\r").rep

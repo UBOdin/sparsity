@@ -80,6 +80,7 @@ class ExpressionParserSpec extends Specification
     "Parse Strings" >> {
       Parse("'Foo'") should be equalTo(StringPrimitive("Foo"))
       Parse("'Foo''sball'") should be equalTo(StringPrimitive("Foo'sball"))
+      Parse("'(SEX = ''M'' ) OR ( SEX = ''F'')'") should be equalTo(StringPrimitive("(SEX = 'M' ) OR ( SEX = 'F')"))
     }
 
     "Parse CASE Expressions" >> {
