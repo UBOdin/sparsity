@@ -60,18 +60,27 @@ object Expression
 
   def isNullBetweenIn[_:P] = P(
     (addSub ~ (
+      
 
-      (
-        StringInIgnoreCase("IS") ~ optionalNegation ~ 
-
-        // IS NULL -> IsNull(...)
-        ( StringInIgnoreCase("NULL").map 
-            { _ => IsNull(_) }
-
-        // IS BETWEEN low AND high -> IsBetween(..., low, high)
-        | (StringInIgnoreCase("BETWEEN") ~ addSub ~ "AND" ~ addSub).map
-            { case (low, high) => IsBetween(_:Expression, low, high) }
-        )
+      // IS [NOT] NULL -> IsNull(...)
+      ( StringInIgnoreCase("IS") ~ optionalNegation ~ 
+        StringInIgnoreCase("NULL").map 
+          { _ => IsNull(_) } 
+      ) | (
+        // [IS] [NOT] BETWEEN low AND high 
+        StringInIgnoreCase("IS").? ~ optionalNegation ~
+        ( 
+          StringInIgnoreCase("BETWEEN") ~ 
+            addSub ~ "AND" ~ addSub
+        ).map { case (low, high) =>
+            { 
+              (lhs:Expression) => Arithmetic(
+                Comparison(lhs, Comparison.Gte, low),
+                Arithmetic.And,
+                Comparison(lhs, Comparison.Lte, high)
+              ) 
+            }
+        }
       ) | (
         optionalNegation ~ StringInIgnoreCase("IN") ~/ "(" ~/ (
           (&("SELECT") ~ SQL.select.map { 

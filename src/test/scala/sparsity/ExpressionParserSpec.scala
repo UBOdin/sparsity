@@ -108,5 +108,46 @@ class ExpressionParserSpec extends Specification
       )
     }
 
+    "Parse BETWEEN Expressions" >> {
+      Parse("A BETWEEN 1 AND 2") should be equalTo(
+        Arithmetic(
+          Comparison(
+            Column(Name("A")),
+            Comparison.Gte,
+            LongPrimitive(1)
+          ),
+          Arithmetic.And,
+          Comparison(
+            Column(Name("A")),
+            Comparison.Lte,
+            LongPrimitive(2)
+          )
+        )
+      )
+      Parse("A+2 BETWEEN 1 AND 2") should be equalTo(
+        Arithmetic(
+          Comparison(
+            Arithmetic(
+              Column(Name("A")),
+              Arithmetic.Add,
+              LongPrimitive(2)
+            ),
+            Comparison.Gte,
+            LongPrimitive(1)
+          ),
+          Arithmetic.And,
+          Comparison(
+            Arithmetic(
+              Column(Name("A")),
+              Arithmetic.Add,
+              LongPrimitive(2)
+            ),
+            Comparison.Lte,
+            LongPrimitive(2)
+          )
+        )
+      )
+    }
+
   }
 }
