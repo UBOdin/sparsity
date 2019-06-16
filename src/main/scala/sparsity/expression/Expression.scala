@@ -317,25 +317,6 @@ case class Not(target: Expression) extends Expression
   def rebuild(c: Seq[Expression]): Expression = Not(c(0))
 }
 
-case class IsBetween(lhs:Expression, low:Expression, high:Expression) extends NegatableExpression
-{
-  override def toString = 
-    Expression.parenthesize(lhs) +
-    " IS BETWEEN " +
-    Expression.parenthesize(low) + 
-    " AND " +
-    Expression.parenthesize(high)
-  def toNegatedString =
-    Expression.parenthesize(lhs) +
-    " IS NOT BETWEEN " +
-    Expression.parenthesize(low) + 
-    " AND " +
-    Expression.parenthesize(high)
-  def needsParenthesis = true
-  def children: Seq[Expression] = Seq(lhs, low, high)
-  def rebuild(c: Seq[Expression]): Expression = IsBetween(c(0), c(1), c(2))
-}
-
 case class Cast(expression: Expression, t: Name) extends Expression
 {
   override def toString = "CAST("+expression.toString+" AS "+t+")"
