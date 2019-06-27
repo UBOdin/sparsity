@@ -1,7 +1,7 @@
 import scala.sys.process._
 
 name := "Sparsity"
-version := "1.1"
+version := "1.2-SNAPSHOT"
 organization := "info.mimirdb"
 scalaVersion := "2.11.11"
 
