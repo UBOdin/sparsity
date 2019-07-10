@@ -207,6 +207,13 @@ SELECT A, B FROM R;""") { q =>
       }
 
     }
+
+    "Parse queries with schema-ed tables" >> {
+      testSelect("""SELECT A FROM schema.R;""") { q => 
+        q.from should contain(exactly(FromTable(Some(Name("schema")), Name("R"), None):FromElement))
+      }
+
+    }
   }
 
   "The Statement Parser" should {
