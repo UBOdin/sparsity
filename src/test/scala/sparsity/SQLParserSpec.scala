@@ -116,6 +116,13 @@ class SQLParserSpec extends Specification
       }
     }
 
+    "Parse SELECT queries with quoted identifiers" >> 
+    {
+      testSelect("SELECT `RANGE` AS `RANGE` FROM R;") { q =>
+        q.target should contain(SelectExpression(e("`RANGE`"), Some(Name("RANGE", true))))
+      }
+    }
+
     "Parse aggregate SELECT queries" >> {
       testSelect("SELECT A FROM R GROUP BY A;") { q => 
         q.target should contain(exactly(et("A")))
@@ -192,6 +199,13 @@ SELECT A, B FROM R;""") { q =>
         q.union should not be equalTo(None)
         q.union.get._2.union should not be equalTo(None)
       }
+    }
+
+    "Parse queries with quoted strings" >> {
+      testSelect("""SELECT '''foo''';""") { q =>
+        q.target should contain(exactly(SelectExpression(StringPrimitive("'foo'")):SelectTarget))
+      }
+
     }
   }
 

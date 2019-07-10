@@ -230,7 +230,10 @@ object SQL
 
   def selectTarget[_:P]: P[SelectTarget] = P(
       P("*").map { _ => SelectAll() } 
-    | Elements.dottedWildcard.map { SelectTable(_) }
+      // Dotted wildcard needs a lookahead since a single token isn't
+      // enough to distinguish between `foo`.* and `foo` AS `bar`
+    | ( &(Elements.dottedWildcard) ~ 
+          Elements.dottedWildcard.map { SelectTable(_) } )
     | ( ExprParser.expression ~ alias.?).map 
         { x => SelectExpression(x._1, x._2) }
   )

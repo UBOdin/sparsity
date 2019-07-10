@@ -34,7 +34,8 @@ object Elements
         "LEFT",
         "OUTER",
         "JOIN",
-        "ON"
+        "ON",
+        "AS"
       ) ~ 
       // avoid dropping keyword prefixes 
       // (e.g., 'int' matched by 'in')
