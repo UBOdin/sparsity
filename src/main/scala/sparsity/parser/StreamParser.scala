@@ -23,6 +23,11 @@ class StreamParser[R](parser:(Iterator[String] => Parsed[R]), source: Reader)
     }
   }
 
+  def loadBlocking
+  {
+    buffer += bufferedSource.readLine.replace("\\n", " ");
+  }
+
   def hasNext(): Boolean = { load; buffer.size > 0 }
   def next:Parsed[R] =
   {
