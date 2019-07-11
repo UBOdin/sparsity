@@ -90,13 +90,21 @@ object SQL
     (
       StringInIgnoreCase("CREATE") ~
       orReplace ~
-      StringInIgnoreCase("MATERIALIZED").!.?.map { _ != None } ~
+      StringInIgnoreCase(
+        "MATERIALIZED",
+        "TEMPORARY"
+      ).!.?.map { 
+        _.map { _.toUpperCase } match {
+          case Some("MATERIALIZED") => (true, false)
+          case Some("TEMPORARY") => (false, true)
+          case _ => (false, false)
+        }} ~
       StringInIgnoreCase("VIEW") ~/
       Elements.identifier ~
       StringInIgnoreCase("AS") ~/
       select
-    ).map { case (orReplace, materialized, name, query) => 
-              CreateView(name, orReplace, query, materialized) }
+    ).map { case (orReplace, (materialized, temporary), name, query) => 
+              CreateView(name, orReplace, query, materialized, temporary) }
   )
 
   def columnAnnotation[_:P]:P[ColumnAnnotation] = P(

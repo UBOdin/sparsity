@@ -82,7 +82,8 @@ case class CreateView(
   name: Name,
   orReplace: Boolean,
   query: SelectBody,
-  materialized: Boolean = false
+  materialized: Boolean = false,
+  temporary: Boolean = false
 ) extends Statement
 {
   override def toString() = (

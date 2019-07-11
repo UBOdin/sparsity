@@ -325,26 +325,43 @@ SELECT A, B FROM R;""") { q =>
         ))
       }
     }
-    
-    "parse CREATE TABLE AS statements" >> {
 
+    "parse CREATE TABLE AS statements" >> {
       statement[CreateTableAs]("""
         CREATE TABLE foo AS SELECT * FROM bar;
       """) { stmt =>
         stmt.name must beEqualTo(Name("foo"))
         stmt.query.from must contain(exactly(f("bar")))
       }
-
     }
 
     "parse CREATE VIEW statements" >> {
-
       statement[CreateView](
         "CREATE VIEW foo AS SELECT * FROM bar;"
       ) { stmt => 
         stmt.name must beEqualTo(Name("foo"))
         stmt.query.from must contain(exactly(f("bar")))
         stmt.orReplace must beFalse
+        stmt.temporary must beFalse
+      }
+      statement[CreateView](
+        "CREATE OR REPLACE VIEW foo AS SELECT * FROM bar;"
+      ) { stmt => 
+        stmt.name must beEqualTo(Name("foo"))
+        stmt.query.from must contain(exactly(f("bar")))
+        stmt.orReplace must beTrue
+        stmt.temporary must beFalse
+      }
+    }
+
+    "parse CREATE TEMPORARY VIEW statements" >> {
+      statement[CreateView](
+        "CREATE TEMPORARY VIEW foo AS SELECT * FROM bar;"
+      ) { stmt => 
+        stmt.name must beEqualTo(Name("foo"))
+        stmt.query.from must contain(exactly(f("bar")))
+        stmt.orReplace must beFalse
+        stmt.temporary must beTrue
       }
       statement[CreateView](
         "CREATE OR REPLACE VIEW foo AS SELECT * FROM bar;"
@@ -353,7 +370,6 @@ SELECT A, B FROM R;""") { q =>
         stmt.query.from must contain(exactly(f("bar")))
         stmt.orReplace must beTrue
       }
-
     }
 
     "parse DROP TABLE statements" >> {
