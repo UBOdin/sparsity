@@ -324,6 +324,16 @@ SELECT A, B FROM R;""") { q =>
           TableIndexOn(Seq(Name("foo"), Name("baz")))
         ))
       }
+    }
+    
+    "parse CREATE TABLE AS statements" >> {
+
+      statement[CreateTableAs]("""
+        CREATE TABLE foo AS SELECT * FROM bar;
+      """) { stmt =>
+        stmt.name must beEqualTo(Name("foo"))
+        stmt.query.from must contain(exactly(f("bar")))
+      }
 
     }
 

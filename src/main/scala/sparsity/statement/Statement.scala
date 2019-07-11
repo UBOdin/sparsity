@@ -68,6 +68,16 @@ case class CreateTable(
     ");"
 }
 
+case class CreateTableAs(
+  name: Name,
+  orReplace: Boolean,
+  query: SelectBody
+) extends Statement
+{
+  override def toString() =
+    s"CREATE ${if(orReplace){"OR REPLACE "}else{""}}TABLE $name AS $query;"
+}
+
 case class CreateView(
   name: Name,
   orReplace: Boolean,

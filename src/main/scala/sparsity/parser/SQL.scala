@@ -149,13 +149,21 @@ object SQL
       StringInIgnoreCase("CREATE") ~
       orReplace ~
       StringInIgnoreCase("TABLE") ~/
-      Elements.identifier ~ "(" ~
-        tableField.rep(sep = Elements.comma) ~
-      ")"
-    ).map { case (orReplace, table, fields) =>
-      val columns = fields.collect { case Right(r) => r }
-      val annotations = fields.collect { case Left(l) => l }
-      CreateTable(table, orReplace, columns, annotations)
+      Elements.identifier ~
+      ( 
+        ( StringInIgnoreCase("AS") ~/ select ).map { Left(_) }
+        | ( "(" ~/
+            tableField.rep(sep = Elements.comma) ~
+          ")"
+        ).map { Right(_) }
+      )
+    ).map { 
+        case (orReplace, table, Left(query)) => 
+          CreateTableAs(table, orReplace, query)
+        case (orReplace, table, Right(fields)) =>
+          val columns = fields.collect { case Right(r) => r }
+          val annotations = fields.collect { case Left(l) => l }
+          CreateTable(table, orReplace, columns, annotations)
     }
   )
 
