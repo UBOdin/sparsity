@@ -29,4 +29,25 @@ case class SelectBody(
       ( union.map { case (t, b) => Seq(Union.toString(t)) ++ b.stringElements }.toSeq.flatten )
     )
   override def toString = stringElements.mkString(" ")
+
+  def unionWith(t: Union.Type, body: SelectBody): SelectBody = { 
+    val replacementUnion = 
+      union match { 
+        case Some(nested) => (nested._1, nested._2.unionWith(t, body))
+        case None => (t, body)
+      }
+
+    SelectBody(
+      distinct,
+      target,
+      from,
+      where,
+      groupBy,
+      having,
+      orderBy,
+      limit,
+      offset,
+      union = Some(replacementUnion)
+    )
+  }
 }

@@ -15,7 +15,7 @@ object SQL
   def apply(input: String) = parse(input, terminatedStatement(_))
   def apply(input: Reader) = 
     new StreamParser[Statement](
-      parse(_:Iterator[String], terminatedStatement(_)), 
+      parse(_:Iterator[String], terminatedStatement(_), verboseFailures = true), 
       input
     )
 
@@ -25,7 +25,7 @@ object SQL
   def statement[_:P]: P[Statement] = 
     P( 
       Pass()~ // This trims off leading whitespace
-      ( select.map { Select(_) }
+      ( parenthesizedSelect.map { Select(_) }
       | update
       | delete
       | insert
@@ -362,7 +362,16 @@ object SQL
   )
 
   def unionClause[_:P] = P(
-    (StringInIgnoreCase("UNION") ~/ allOrDistinct ~/ select)
+    (StringInIgnoreCase("UNION") ~/ allOrDistinct ~/ parenthesizedSelect)
+  )
+
+  def parenthesizedSelect[_:P]: P[SelectBody] = P(
+    (
+      "(" ~/ select ~ ")" ~/ unionClause.?
+    ).map { 
+      case (body, Some((unionType, unionBody))) => body.unionWith(unionType, unionBody) 
+      case (body, None) => body
+    } | select
   )
 
   def select[_:P]: P[SelectBody] = P( 

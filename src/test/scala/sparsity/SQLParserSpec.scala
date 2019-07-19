@@ -38,7 +38,7 @@ class SQLParserSpec extends Specification
       case Parsed.Success(result, index) => 
         result.asInstanceOf[Select].body
       case f@Parsed.Failure(error, index, extra) =>
-        throw new RuntimeException(f.msg)
+        throw new RuntimeException(f.longMsg)
     }
   }
 
@@ -187,6 +187,9 @@ class SQLParserSpec extends Specification
       selects.next.target should contain(exactly(et("AVG(A)")))
       selects.next.target should contain(exactly(et("MIN(A)")))
       selects.next.target should contain(exactly(et("MAX(A)")))
+
+      while(selects.hasNext) { selects.next }
+      ok
       
     }
 
