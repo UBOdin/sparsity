@@ -45,7 +45,7 @@ object Elements
 
   def rawIdentifier[_:P] = P(
     avoidReservedKeywords ~
-    (CharIn("a-zA-Z") ~ CharsWhileIn("a-zA-Z0-9_").?).!.map { Name(_) }
+    (CharIn("_a-zA-Z") ~ CharsWhileIn("a-zA-Z0-9_").?).!.map { Name(_) }
   )
   def quotedIdentifier[_:P] = P(
     ( ("`" ~/ CharsWhile( _ != '`' ).! ~ "`")

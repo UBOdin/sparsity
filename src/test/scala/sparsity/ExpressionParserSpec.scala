@@ -75,6 +75,9 @@ class ExpressionParserSpec extends Specification
       Parse("int") should be equalTo(
         Column(Name("int"))
       )
+      Parse("_c0") should be equalTo(
+        Column(Name("_c0"))
+      )
     }
 
     "Parse Strings" >> {
