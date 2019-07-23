@@ -35,7 +35,12 @@ object Elements
         "OUTER",
         "JOIN",
         "ON",
-        "AS"
+        "AS",
+        "CASE",
+        "WHEN",
+        "THEN",
+        "ELSE",
+        "IF"
       ) ~ 
       // avoid dropping keyword prefixes 
       // (e.g., 'int' matched by 'in')

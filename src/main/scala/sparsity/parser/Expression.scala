@@ -121,7 +121,7 @@ object Expression
     parens | 
     primitive | 
     jdbcvar |
-    caseWhen |
+    caseWhen | ifThenElse |
     cast |
     // need to lookahead `function` to avoid conflicts with `column`
     &(Elements.identifier ~ "(") ~ function | 
@@ -169,6 +169,19 @@ object Expression
     StringInIgnoreCase("END")
   ).map { 
     case (target, whenThen, orElse) => CaseWhenElse(target, whenThen, orElse)
+  }
+
+  def ifThenElse[_:P] = P(
+    StringInIgnoreCase("IF") ~/ 
+    expression ~/
+    StringInIgnoreCase("THEN") ~/
+    expression ~/
+    StringInIgnoreCase("ELSE") ~/
+    expression ~/
+    StringInIgnoreCase("END")
+  ).map { 
+    case (condition, thenClause, elseClause) => 
+      CaseWhenElse(None, Seq(condition -> thenClause), elseClause)
   }
 
   def cast[_:P] = P(

@@ -109,6 +109,17 @@ class ExpressionParserSpec extends Specification
           Column(Name("D"))
         )
       )
+      Parse("IF A = 1 THEN B ELSE C END") should be equalTo(
+        CaseWhenElse(
+          None,
+          Seq(Comparison(
+            Column(Name("A")),
+            Comparison.Eq,
+            LongPrimitive(1)
+          ) -> Column(Name("B"))),
+          Column(Name("C"))
+        )
+      )
     }
 
     "Parse BETWEEN Expressions" >> {
