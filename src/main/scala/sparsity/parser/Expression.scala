@@ -3,6 +3,7 @@ package sparsity.parser
 import fastparse._, MultiLineWhitespace._
 import sparsity.Name
 import sparsity.expression._
+import sparsity.parser.Elements.{keyword => Keyword}
 
 object Expression
 {
@@ -17,14 +18,14 @@ object Expression
   def expression[_:P]: P[Expression] = P( disjunction )
 
   def disjunction[_:P] = P(
-    (conjunction ~ (!(StringInIgnoreCase("ORDER")) ~ StringInIgnoreCase("OR") ~ conjunction).rep).map 
+    (conjunction ~ (!(Keyword("ORDER")) ~ Keyword("OR") ~ conjunction).rep).map 
       { x => x._2.fold(x._1) { 
         (accum, current) => Arithmetic(accum, Arithmetic.Or, current)
       }
     }
   )
   def conjunction[_:P] = P(
-    (negation ~ (StringInIgnoreCase("AND") ~ negation).rep).map 
+    (negation ~ (Keyword("AND") ~ negation).rep).map 
       { x => x._2.fold(x._1) { 
         (accum, current) => Arithmetic(accum, Arithmetic.And, current)
       }
@@ -32,7 +33,7 @@ object Expression
   )
 
   def negation[_:P] = P(
-    (StringInIgnoreCase("NOT").!.? ~ comparison).map {
+    (Keyword("NOT").!.? ~ comparison).map {
       case (None, expression) => expression
       case (_, expression) => Not(expression)
     }
@@ -52,7 +53,7 @@ object Expression
   )
 
   def optionalNegation[_:P]: P[Expression => Expression] = P(
-    StringInIgnoreCase("NOT").!.?.map { 
+    Keyword("NOT").!.?.map { 
       x => if(x.isDefined) { y => Not(y) } 
            else { y => y}
     }
@@ -63,15 +64,15 @@ object Expression
       
 
       // IS [NOT] NULL -> IsNull(...)
-      ( StringInIgnoreCase("IS") ~ optionalNegation ~ 
-        StringInIgnoreCase("NULL").map 
+      ( Keyword("IS") ~ optionalNegation ~ 
+        Keyword("NULL").map 
           { _ => IsNull(_) } 
       ) | (
         // [IS] [NOT] BETWEEN low AND high 
-        StringInIgnoreCase("IS").? ~ optionalNegation ~
+        Keyword("IS").? ~ optionalNegation ~
         ( 
-          StringInIgnoreCase("BETWEEN") ~ 
-            addSub ~ "AND" ~ addSub
+          Keyword("BETWEEN") ~ 
+            addSub ~ Keyword("AND") ~ addSub
         ).map { case (low, high) =>
             { 
               (lhs:Expression) => Arithmetic(
@@ -82,8 +83,8 @@ object Expression
             }
         }
       ) | (
-        optionalNegation ~ StringInIgnoreCase("IN") ~/ "(" ~/ (
-          (&("SELECT") ~ SQL.select.map { 
+        optionalNegation ~ Keyword("IN") ~/ "(" ~/ (
+          (&(Keyword("SELECT")) ~ SQL.select.map { 
             query => InExpression(_:Expression, Right(query))
           }) | 
           expressionList.map { exprs => InExpression(_:Expression, Left(exprs)) }
@@ -136,15 +137,15 @@ object Expression
       Elements.integer.map { v => LongPrimitive(v) } 
     | Elements.decimal.map { v => DoublePrimitive(v) }
     | Elements.quotedString.map { v => StringPrimitive(v) }
-    | StringInIgnoreCase("TRUE").map { _ => BooleanPrimitive(true) }
-    | StringInIgnoreCase("FALSE").map { _ => BooleanPrimitive(false) }
+    | Keyword("TRUE").map { _ => BooleanPrimitive(true) }
+    | Keyword("FALSE").map { _ => BooleanPrimitive(false) }
   )
 
   def column[_:P] = P(Elements.dottedPair.map { x => Column(x._2, x._1) })
 
   def function[_:P] = P(
     (Elements.identifier ~ "(" ~/ 
-      StringInIgnoreCase("DISTINCT").!.?.map { _ != None } ~ 
+      Keyword("DISTINCT").!.?.map { _ != None } ~ 
       ( "*".!.map { _ => None }
         | expressionList.map { Some(_) }
       ) ~ ")"
@@ -156,29 +157,29 @@ object Expression
   def jdbcvar[_:P] = P( "?".!.map { _ => JDBCVar() } )
 
   def caseWhen[_:P] = P(
-    StringInIgnoreCase("CASE") ~/
-    ( !StringInIgnoreCase("WHEN") ~ expression ).? ~
+    Keyword("CASE") ~/
+    ( !Keyword("WHEN") ~ expression ).? ~
     (
-      StringInIgnoreCase("WHEN") ~/
+      Keyword("WHEN") ~/
       expression ~
-      StringInIgnoreCase("THEN") ~/
+      Keyword("THEN") ~/
       expression
     ).rep ~
-    StringInIgnoreCase("ELSE") ~/
+    Keyword("ELSE") ~/
     expression ~
-    StringInIgnoreCase("END")
+    Keyword("END")
   ).map { 
     case (target, whenThen, orElse) => CaseWhenElse(target, whenThen, orElse)
   }
 
   def ifThenElse[_:P] = P(
-    StringInIgnoreCase("IF") ~/ 
+    Keyword("IF") ~/ 
     expression ~/
-    StringInIgnoreCase("THEN") ~/
+    Keyword("THEN") ~/
     expression ~/
-    StringInIgnoreCase("ELSE") ~/
+    Keyword("ELSE") ~/
     expression ~/
-    StringInIgnoreCase("END")
+    Keyword("END")
   ).map { 
     case (condition, thenClause, elseClause) => 
       CaseWhenElse(None, Seq(condition -> thenClause), elseClause)
@@ -186,8 +187,8 @@ object Expression
 
   def cast[_:P] = P(
     (
-      "CAST" ~/ "(" ~/
-      expression ~ "AS" ~/ 
+      Keyword("CAST") ~/ "(" ~/
+      expression ~ Keyword("AS") ~/ 
       Elements.identifier ~ ")"
     ).map { 
       case (expression, t) => Cast(expression, t)

@@ -8,7 +8,7 @@ import sparsity.statement._
 import sparsity.select._
 import sparsity.parser.{SQL, Expression}
 import fastparse.Parsed
-import sparsity.expression.{LongPrimitive, StringPrimitive}
+import sparsity.expression.{LongPrimitive, StringPrimitive, Column}
 
 import scala.io._
 import java.io._
@@ -113,6 +113,16 @@ class SQLParserSpec extends Specification
 
       testSelect("SELECT DOB FROM DetectSeriesTest2 WHERE Rank = 1 ORDER BY DOB;") { q =>
         q.orderBy should beEqualTo( Seq(asc("DOB")) )
+      }
+    }
+
+    "Parse SELECT queries with partial keywords" >> 
+    {
+      testSelect("SELECT NOTE FROM R;") { q =>
+        q.target should contain(exactly(SelectExpression(Column("NOTE")):SelectTarget))
+      }
+      testSelect("SELECT CASE_NUMBER FROM R;") { q =>
+        q.target should contain(exactly(SelectExpression(Column("CASE_NUMBER")):SelectTarget))
       }
     }
 

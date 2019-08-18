@@ -5,47 +5,81 @@ import sparsity._
 
 object Elements
 {
-
-  def avoidReservedKeywords[_:P] = P(
-    !(
-      StringInIgnoreCase(
-        "FROM",
-        "SELECT",
-        "WHERE",
-        "HAVING",
-        "GROUP",
-        "BY",
-        "IN",
-        "IS",
-        "BETWEEN",
-        "NOT",
-        "AND",
-        "OR",
-        "WITH",
-        "LIMIT",
-        "OFFSET",
-        "ALL",
-        "DISTINCT",
-        "UNION",
-        "ORDER",
-        "NATURAL",
-        "INNER",
-        "RIGHT",
-        "LEFT",
-        "OUTER",
-        "JOIN",
-        "ON",
-        "AS",
-        "CASE",
-        "WHEN",
-        "THEN",
-        "ELSE",
-        "IF"
-      ) ~ 
+  def anyKeyword[_:P] = P(
+    StringInIgnoreCase(
+      "ALL",
+      "ALTER",
+      "AND",
+      "AS",
+      "ASC",
+      "BETWEEN",
+      "BY",
+      "CASE",
+      "CAST",
+      "CREATE",
+      "DEFAULT",
+      "DELETE",
+      "DESC",
+      "DISTINCT",
+      "DROP",
+      "ELSE",
+      "END",
+      "EXISTS",
+      "EXPLAIN",
+      "FALSE",
+      "FROM",
+      "FULL",
+      "GROUP",
+      "HAVING",
+      "IF",
+      "IN",
+      "INDEX",
+      "INNER",
+      "INSERT",
+      "INTO",
+      "IS",
+      "JOIN",
+      "KEY",
+      "LEFT",
+      "LIMIT",
+      "MATERIALIZE",
+      "MATERIALIZED",
+      "NATURAL",
+      "NOT",
+      "NULL",
+      "OFFSET",
+      "ON",
+      "OR",
+      "ORDER",
+      "OUTER",
+      "PRIMARY",
+      "REPLACE",
+      "RIGHT",
+      "SELECT",
+      "SET",
+      "TABLE",
+      "TEMPORARY",
+      "THEN",
+      "TRUE",
+      "UPDATE",
+      "UNION",
+      "VALUES",
+      "VIEW",
+      "WHEN",
+      "WHERE",
+      "WITH"
       // avoid dropping keyword prefixes 
       // (e.g., 'int' matched by 'in')
-      !CharIn("a-zA-Z0-9_") 
-    )
+    ).! ~ !CharIn("a-zA-Z0-9_") 
+  )
+
+  def keyword[_:P](expected: String*) = P[Unit](
+    anyKeyword.filter { kw => expected.exists { _.equalsIgnoreCase(kw) } }
+              .map { _ => () }
+  )
+
+  def avoidReservedKeywords[_:P] = P(
+    !anyKeyword 
   )
 
   def rawIdentifier[_:P] = P(

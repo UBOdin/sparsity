@@ -9,6 +9,7 @@ import sparsity.select._
 import sparsity.alter._
 import sparsity.expression.{Expression => Expr, BooleanPrimitive}
 import sparsity.parser.{Expression => ExprParser}
+import sparsity.parser.Elements.{keyword => Keyword}
 
 object SQL
 {
@@ -29,11 +30,11 @@ object SQL
       | update
       | delete
       | insert
-      | (&(StringInIgnoreCase("CREATE")) ~/ (
+      | (&(Keyword("CREATE")) ~/ (
             createTable 
           | createView
         ))
-      | (&(StringInIgnoreCase("ALTER")) ~/ (
+      | (&(Keyword("ALTER")) ~/ (
             alterView
         ))
       | dropTableOrView
@@ -42,32 +43,32 @@ object SQL
     )
 
   def explain[_:P] = P(
-    StringInIgnoreCase("EXPLAIN") ~ select.map { Explain(_) }
+    Keyword("EXPLAIN") ~ select.map { Explain(_) }
   )
 
   def ifExists[_:P]:P[Boolean] = P(
-    (StringInIgnoreCase("IF") ~
-      StringInIgnoreCase("EXISTS")
+    (Keyword("IF") ~
+      Keyword("EXISTS")
     ).!.?.map { _ != None }
   )
 
   def alterView[_:P] = P(
     (
-      StringInIgnoreCase("ALTER") ~
-      StringInIgnoreCase("VIEW") ~/
+      Keyword("ALTER") ~
+      Keyword("VIEW") ~/
       Elements.identifier ~
       (
-          (StringInIgnoreCase("MATERIALIZE").!.map { _ => Materialize(true) })
-        | ( StringInIgnoreCase("DROP") ~
-            StringInIgnoreCase("MATERIALIZE").!.map { _ => Materialize(false) })
+          (Keyword("MATERIALIZE").!.map { _ => Materialize(true) })
+        | ( Keyword("DROP") ~
+            Keyword("MATERIALIZE").!.map { _ => Materialize(false) })
       )
     ).map { case (name, op) => AlterView(name, op) }
   )
 
   def dropTableOrView[_:P] = P(
     (
-      StringInIgnoreCase("DROP") ~
-      StringInIgnoreCase("TABLE", "VIEW").!.map { _.toUpperCase } ~/
+      Keyword("DROP") ~
+      Keyword("TABLE", "VIEW").!.map { _.toUpperCase } ~/
       ifExists ~
       Elements.identifier
     ).map { 
@@ -81,16 +82,16 @@ object SQL
   )
 
   def orReplace[_:P]:P[Boolean] = P(
-    (StringInIgnoreCase("OR") ~
-      StringInIgnoreCase("REPLACE")
+    (Keyword("OR") ~
+      Keyword("REPLACE")
     ).!.?.map { _ != None }
   )
 
   def createView[_:P] = P(
     (
-      StringInIgnoreCase("CREATE") ~
+      Keyword("CREATE") ~
       orReplace ~
-      StringInIgnoreCase(
+      Keyword(
         "MATERIALIZED",
         "TEMPORARY"
       ).!.?.map { 
@@ -99,9 +100,9 @@ object SQL
           case Some("TEMPORARY") => (false, true)
           case _ => (false, false)
         }} ~
-      StringInIgnoreCase("VIEW") ~/
+      Keyword("VIEW") ~/
       Elements.identifier ~
-      StringInIgnoreCase("AS") ~/
+      Keyword("AS") ~/
       select
     ).map { case (orReplace, (materialized, temporary), name, query) => 
               CreateView(name, orReplace, query, materialized, temporary) }
@@ -109,13 +110,13 @@ object SQL
 
   def columnAnnotation[_:P]:P[ColumnAnnotation] = P(
     (
-      StringInIgnoreCase("PRIMARY") ~/
-        StringInIgnoreCase("KEY").map { _ => ColumnIsPrimaryKey() }
+      Keyword("PRIMARY") ~/
+        Keyword("KEY").map { _ => ColumnIsPrimaryKey() }
     ) | (
-      StringInIgnoreCase("NOT") ~/
-        StringInIgnoreCase("NULL").map { _ => ColumnIsNotNullable() }
+      Keyword("NOT") ~/
+        Keyword("NULL").map { _ => ColumnIsNotNullable() }
     ) | (
-      StringInIgnoreCase("DEFAULT") ~/
+      Keyword("DEFAULT") ~/
         (
           ("(" ~ ExprParser.expression ~ ")")
           | ExprParser.primitive
@@ -130,12 +131,12 @@ object SQL
 
   def tableField[_:P]:P[Either[TableAnnotation,ColumnDefinition]] = P(
     (
-      StringInIgnoreCase("PRIMARY") ~/
-        StringInIgnoreCase("KEY") ~ 
+      Keyword("PRIMARY") ~/
+        Keyword("KEY") ~ 
           oneOrMoreAttributes.map { attrs => Left(TablePrimaryKey(attrs)) }
     ) | (
-      StringInIgnoreCase("INDEX") ~/
-        StringInIgnoreCase("ON") ~ 
+      Keyword("INDEX") ~/
+        Keyword("ON") ~ 
           oneOrMoreAttributes.map { attrs => Left(TableIndexOn(attrs)) }
     ) | (
       (
@@ -154,12 +155,12 @@ object SQL
 
   def createTable[_:P] = P(
     (
-      StringInIgnoreCase("CREATE") ~
+      Keyword("CREATE") ~
       orReplace ~
-      StringInIgnoreCase("TABLE") ~/
+      Keyword("TABLE") ~/
       Elements.identifier ~
       ( 
-        ( StringInIgnoreCase("AS") ~/ select ).map { Left(_) }
+        ( Keyword("AS") ~/ select ).map { Left(_) }
         | ( "(" ~/
             tableField.rep(sep = Elements.comma) ~
           ")"
@@ -177,27 +178,27 @@ object SQL
 
   def valueList[_:P]: P[InsertValues] = P(
     (
-      StringInIgnoreCase("VALUES") ~/
+      Keyword("VALUES") ~/
       ("(" ~/ ExprParser.expressionList ~ ")").rep(sep = Elements.comma)
     ).map { ExplicitInsert(_) }
   )
 
   def insert[_:P] = P(
     (
-      StringInIgnoreCase("INSERT") ~/
+      Keyword("INSERT") ~/
       (
-        StringInIgnoreCase("OR") ~/
-        StringInIgnoreCase("REPLACE")
+        Keyword("OR") ~/
+        Keyword("REPLACE")
       ).!.?.map { case None => false; case _ => true } ~
-      StringInIgnoreCase("INTO") ~/
+      Keyword("INTO") ~/
       Elements.identifier ~ 
       (("(" ~/
         Elements.identifier ~
         (Elements.comma ~/ Elements.identifier).rep ~
       ")").map { x => Seq(x._1)++x._2 }).? ~ 
       (
-          (&(StringInIgnoreCase("SELECT")) ~/ select.map { SelectInsert(_) })
-        | (&(StringInIgnoreCase("VALUES")) ~/ valueList)
+          (&(Keyword("SELECT")) ~/ select.map { SelectInsert(_) })
+        | (&(Keyword("VALUES")) ~/ valueList)
       )
     ).map { case (orReplace, table, columns, values) => 
       Insert(table, columns, values, orReplace)
@@ -206,11 +207,11 @@ object SQL
 
   def delete[_:P] = P(
     (
-      StringInIgnoreCase("DELETE") ~/
-      StringInIgnoreCase("FROM") ~/
+      Keyword("DELETE") ~/
+      Keyword("FROM") ~/
       Elements.identifier ~
       (
-        StringInIgnoreCase("WHERE") ~/
+        Keyword("WHERE") ~/
         ExprParser.expression
       ).?
     ).map { case (table, where) => Delete(table, where) }
@@ -218,9 +219,9 @@ object SQL
 
   def update[_:P] = P(
     (
-      StringInIgnoreCase("UPDATE") ~/ 
+      Keyword("UPDATE") ~/ 
       Elements.identifier ~ 
-      StringInIgnoreCase("SET") ~/
+      Keyword("SET") ~/
       ( 
         Elements.identifier ~
         "=" ~/
@@ -241,7 +242,7 @@ object SQL
   )
 
   def alias[_:P]: P[Name] = P(
-    StringInIgnoreCase("AS").? ~ Elements.identifier
+    Keyword("AS").? ~ Elements.identifier
   )
 
   def selectTarget[_:P]: P[SelectTarget] = P(
@@ -266,18 +267,18 @@ object SQL
   )
 
   def joinWith[_:P]: P[Join.Type] = P(
-      StringInIgnoreCase("JOIN").map { Unit => Join.Inner } 
+      Keyword("JOIN").map { Unit => Join.Inner } 
     | ( (
-          StringInIgnoreCase("NATURAL").!.map { Unit => Join.Natural}
-        | StringInIgnoreCase("INNER").map { Unit => Join.Inner }
+          Keyword("NATURAL").!.map { Unit => Join.Natural}
+        | Keyword("INNER").map { Unit => Join.Inner }
         | ( ( 
-                StringInIgnoreCase("LEFT").map { Unit => Join.LeftOuter }
-              | StringInIgnoreCase("RIGHT").map { Unit => Join.RightOuter }
-              | StringInIgnoreCase("FULL").map { Unit => Join.FullOuter }
+                Keyword("LEFT").map { Unit => Join.LeftOuter }
+              | Keyword("RIGHT").map { Unit => Join.RightOuter }
+              | Keyword("FULL").map { Unit => Join.FullOuter }
             ).?.map { _.getOrElse(Join.FullOuter) } ~/
-            StringInIgnoreCase("OUTER")
+            Keyword("OUTER")
           )
-        ) ~/ StringInIgnoreCase("JOIN")
+        ) ~/ Keyword("JOIN")
       )
   )
 
@@ -288,7 +289,7 @@ object SQL
         joinWith ~/
         simpleFromElement ~/
         (
-          StringInIgnoreCase("ON") ~/
+          Keyword("ON") ~/
           ExprParser.expression
         ).? ~
         alias.?
@@ -308,29 +309,29 @@ object SQL
   )
 
   def fromClause[_:P] = P(
-    StringInIgnoreCase("FROM") ~/ 
+    Keyword("FROM") ~/ 
       fromElement.rep(sep = Elements.comma, min=1)
   )
 
   def whereClause[_:P] = P(
-    StringInIgnoreCase("WHERE") ~/ ExprParser.expression
+    Keyword("WHERE") ~/ ExprParser.expression
   )
 
   def groupByClause[_:P] = P(
-    StringInIgnoreCase("GROUP") ~/
-    StringInIgnoreCase("BY") ~/
+    Keyword("GROUP") ~/
+    Keyword("BY") ~/
     ExprParser.expressionList
   )
 
   def havingClause[_:P] = P(
-    StringInIgnoreCase("HAVING") ~ ExprParser.expression
+    Keyword("HAVING") ~ ExprParser.expression
   )
 
   def options[A](default: A, options: Map[String, A]): (Option[String] => A) =
     _.map { _.toUpperCase }.map { options(_) }.getOrElse(default)
 
   def ascOrDesc[_:P] = P(
-    StringInIgnoreCase("ASC", "DESC").!.?.map { 
+    Keyword("ASC", "DESC").!.?.map { 
       options(true, Map("ASC" -> true, "DESC"-> false))
     }
   )
@@ -340,29 +341,29 @@ object SQL
   )
 
   def orderByClause[_:P] = P(
-    StringInIgnoreCase("ORDER") ~/
-      StringInIgnoreCase("BY") ~/
+    Keyword("ORDER") ~/
+      Keyword("BY") ~/
         orderBy.rep(sep = Elements.comma, min = 1)
   )
 
   def limitClause[_:P] = P(
-    StringInIgnoreCase("LIMIT") ~/
+    Keyword("LIMIT") ~/
     Elements.integer
   )
 
   def offsetClause[_:P] = P(
-    StringInIgnoreCase("OFFSET") ~/
+    Keyword("OFFSET") ~/
     Elements.integer
   )
 
   def allOrDistinct[_:P] = P(
-    StringInIgnoreCase("ALL", "DISTINCT").!.?.map { 
+    Keyword("ALL", "DISTINCT").!.?.map { 
       options(Union.Distinct, Map("ALL" -> Union.All, "DISTINCT"-> Union.Distinct))
     }
   )
 
   def unionClause[_:P] = P(
-    (StringInIgnoreCase("UNION") ~/ allOrDistinct ~/ parenthesizedSelect)
+    (Keyword("UNION") ~/ allOrDistinct ~/ parenthesizedSelect)
   )
 
   def parenthesizedSelect[_:P]: P[SelectBody] = P(
@@ -376,8 +377,8 @@ object SQL
 
   def select[_:P]: P[SelectBody] = P( 
     (
-      StringInIgnoreCase("SELECT") ~/ 
-      StringInIgnoreCase("DISTINCT").!.?.map { _ != None } ~/
+      Keyword("SELECT") ~/ 
+      Keyword("DISTINCT").!.?.map { _ != None } ~/
       selectTarget.rep(sep = ",") ~
       fromClause.?.map { _.toSeq.flatten } ~
       whereClause.? ~
