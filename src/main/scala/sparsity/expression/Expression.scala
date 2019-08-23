@@ -188,7 +188,7 @@ object Comparison extends Enumeration {
   def apply(lhs: Expression, op: Op, rhs: Expression) =
     new Comparison(lhs, op, rhs)
   def apply(lhs: Expression, op: String, rhs: Expression) =
-    new Comparison(lhs, strings(op), rhs)
+    new Comparison(lhs, strings(op.toUpperCase), rhs)
 
   def unapply(e:Comparison): Option[(Expression, Op, Expression)] =
     Some( (e.lhs, e.op, e.rhs) )
