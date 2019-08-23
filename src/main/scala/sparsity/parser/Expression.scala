@@ -42,7 +42,9 @@ object Expression
   def comparison[_:P] = P(
     (isNullBetweenIn ~ 
       (  StringInIgnoreCase(
-          "=" , "==", "!=", "<>", ">" , "<" , ">=", "<=", "LIKE", "NOT LIKE"
+          "=" , "==", "!=", "<>", ">" , "<" , ">=", "<=", 
+          "LIKE", "NOT LIKE",
+          "RLIKE", "NOT RLIKE"
         ).! ~
         addSub
       ).?

@@ -170,7 +170,7 @@ class Comparison(
 }
 object Comparison extends Enumeration {
   type Op = Value
-  val Eq, Neq, Gt, Lt, Gte, Lte, Like, NotLike = Value
+  val Eq, Neq, Gt, Lt, Gte, Lte, Like, NotLike, RLike, NotRLike = Value
 
   val strings = Map(
     "="  -> Eq,
@@ -181,8 +181,10 @@ object Comparison extends Enumeration {
     "<"  -> Lt,
     ">=" -> Gte,
     "<=" -> Lte,
-    "LIKE" -> Like,
-    "NOT LIKE" -> NotLike
+    "LIKE" -> Like,        // SQL-style LIKE expression
+    "RLIKE" -> RLike,      // Regular expression lookup
+    "NOT LIKE" -> NotLike  // Inverse LIKE
+    "NOT RLIKE" -> RLike,  // Inverse NOT LIKE
   )
   
   def apply(lhs: Expression, op: Op, rhs: Expression) =
@@ -204,20 +206,24 @@ object Comparison extends Enumeration {
       case Lte => Gt
       case Like => NotLike
       case NotLike => Like
+      case RLike => NotRLike
+      case NotRLike => RLike
     }
   }
 
   def flip(v: Op): Option[Op] = 
   {
     v match {
-      case Eq      => Some(Eq)
-      case Neq     => Some(Neq)
-      case Gt      => Some(Lt)
-      case Gte     => Some(Lte)
-      case Lt      => Some(Gt)
-      case Lte     => Some(Gte)
-      case Like    => None
-      case NotLike => None
+      case Eq       => Some(Eq)
+      case Neq      => Some(Neq)
+      case Gt       => Some(Lt)
+      case Gte      => Some(Lte)
+      case Lt       => Some(Gt)
+      case Lte      => Some(Gte)
+      case Like     => None
+      case NotLike  => None
+      case RLike    => None
+      case NotRLike => None
     }
   }
   
@@ -232,6 +238,8 @@ object Comparison extends Enumeration {
       case Lte => "<="
       case Like => "LIKE"
       case NotLike => "NOT LIKE"
+      case RLike => "RLIKE"
+      case NotRLike => "NOT RLIKE"
     }
   }
 }
