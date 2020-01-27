@@ -183,8 +183,8 @@ object Comparison extends Enumeration {
     "<=" -> Lte,
     "LIKE" -> Like,        // SQL-style LIKE expression
     "RLIKE" -> RLike,      // Regular expression lookup
-    "NOT LIKE" -> NotLike  // Inverse LIKE
-    "NOT RLIKE" -> RLike,  // Inverse NOT LIKE
+    "NOT LIKE" -> NotLike, // Inverse LIKE
+    "NOT RLIKE" -> RLike   // Inverse NOT LIKE
   )
   
   def apply(lhs: Expression, op: Op, rhs: Expression) =

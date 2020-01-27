@@ -1,13 +1,13 @@
 import scala.sys.process._
 
 name := "Sparsity"
-version := "1.6-SNAPSHOT"
+version := "1.6"
 organization := "info.mimirdb"
 scalaVersion := "2.11.11"
 
 dependencyOverrides += "org.scala-lang" % "scala-library" % scalaVersion.value
 
-resolvers += "MimirDB" at "http://maven.mimirdb.info/"
+resolvers += "MimirDB" at "https://maven.mimirdb.info/"
 resolvers ++= Seq("snapshots", "releases").map(Resolver.sonatypeRepo)
 
 libraryDependencies ++= Seq(

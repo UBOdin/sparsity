@@ -74,7 +74,8 @@ object Elements
   )
 
   def keyword[_:P](expected: String*) = P[Unit](
-    anyKeyword.filter { kw => expected.exists { _.equalsIgnoreCase(kw) } }
+    anyKeyword.opaque(expected.mkString(" or "))
+              .filter { kw => expected.exists { _.equalsIgnoreCase(kw) } }
               .map { _ => () }
   )
 
