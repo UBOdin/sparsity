@@ -225,8 +225,16 @@ SELECT A, B FROM R;""") { q =>
       testSelect("""SELECT A FROM schema.R;""") { q => 
         q.from should contain(exactly(FromTable(Some(Name("schema")), Name("R"), None):FromElement))
       }
+    }
+
+    "Parse queries with IN expressions" >> {
+      testSelect("SELECT `_c1` FROM R WHERE `R`.`_c0` IN ('2','3','4');") { q =>
+        q.where.get should beAnInstanceOf[sparsity.expression.InExpression]
+      }
 
     }
+
+
   }
 
   "The Statement Parser" should {

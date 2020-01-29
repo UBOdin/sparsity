@@ -85,11 +85,19 @@ object Expression
             }
         }
       ) | (
-        optionalNegation ~ Keyword("IN") ~/ "(" ~/ (
-          (&(Keyword("SELECT")) ~ SQL.select.map { 
-            query => InExpression(_:Expression, Right(query))
-          }) | 
-          expressionList.map { exprs => InExpression(_:Expression, Left(exprs)) }
+        optionalNegation ~ Keyword("IN") ~/ (
+          (
+            // IN ( SELECT ... )
+            &( "(" ~ Keyword("SELECT")) ~/ 
+            "(" ~/ SQL.select.map {
+              query => InExpression(_:Expression, Right(query))
+            } ~ ")"
+          ) | (
+            // IN ('list', 'of', 'items')
+            "(" ~/
+            expressionList.map { exprs => InExpression(_:Expression, Left(exprs)) } ~
+            ")"
+          )
         )
       )
     ).?).map { 

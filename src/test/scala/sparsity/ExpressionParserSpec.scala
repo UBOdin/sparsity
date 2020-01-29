@@ -92,6 +92,29 @@ class ExpressionParserSpec extends Specification
       Parse("'(SEX = ''M'' ) OR ( SEX = ''F'')'") should be equalTo(StringPrimitive("(SEX = 'M' ) OR ( SEX = 'F')"))
     }
 
+    "Parse IN Expressions" >> {
+      Parse("R IN ('1', '2', '3')") should be equalTo(
+        InExpression(
+          Column(Name("R")), 
+          Left(Seq(
+            StringPrimitive("1"),
+            StringPrimitive("2"),
+            StringPrimitive("3")
+          ))
+        )
+      )
+      Parse("R.`_c1` IN ('1', '2', '3')") should be equalTo(
+        InExpression(
+          Column(Name("_c1", true), Some(Name("R"))), 
+          Left(Seq(
+            StringPrimitive("1"),
+            StringPrimitive("2"),
+            StringPrimitive("3")
+          ))
+        )
+      )
+    }
+
     "Parse CASE Expressions" >> {
       Parse("CASE WHEN A > 1 THEN B ELSE C END") should be equalTo(
         CaseWhenElse(
