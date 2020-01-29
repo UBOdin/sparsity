@@ -126,6 +126,7 @@ object Expression
     jdbcvar |
     caseWhen | ifThenElse |
     cast |
+    nullLiteral |
     // need to lookahead `function` to avoid conflicts with `column`
     &(Elements.identifier ~ "(") ~ function | 
     column 
@@ -144,6 +145,8 @@ object Expression
   )
 
   def column[_:P] = P(Elements.dottedPair.map { x => Column(x._2, x._1) })
+
+  def nullLiteral[_:P] = P(Keyword("NULL").map { _ =>  NullPrimitive() })
 
   def function[_:P] = P(
     (Elements.identifier ~ "(" ~/ 

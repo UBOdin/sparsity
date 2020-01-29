@@ -56,6 +56,12 @@ class ExpressionParserSpec extends Specification
       )
     }
 
+    "Parse NULL literals" >> {
+      Parse("NULL") should be equalTo(
+        NullPrimitive()
+      )
+    }
+
     "Parse Variables" >> {
       Parse("A") should be equalTo(
         Column(Name("A"))
