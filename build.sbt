@@ -1,7 +1,7 @@
 import scala.sys.process._
 
 name := "Sparsity"
-version := "1.7"
+version := "1.6.3"
 organization := "info.mimirdb"
 scalaVersion := "2.11.11"
 crossScalaVersions := Seq("2.11.11", "2.12.7")
@@ -13,7 +13,8 @@ resolvers ++= Seq("snapshots", "releases").map(Resolver.sonatypeRepo)
 
 libraryDependencies ++= Seq(
   "com.lihaoyi"                   %% "fastparse"                 % "2.1.0",
-  "ch.qos.logback"                %   "logback-classic"          % "1.2.3",
+  "com.typesafe.scala-logging"    %%  "scala-logging"            % "3.9.2",
+  "ch.qos.logback"                %   "logback-classic"          % "1.1.7",
   "org.specs2"                    %%  "specs2-core"              % "4.6.0" % "test",
   "org.specs2"                    %%  "specs2-junit"             % "4.6.0" % "test"
 )
