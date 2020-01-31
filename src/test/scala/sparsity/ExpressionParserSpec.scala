@@ -56,6 +56,12 @@ class ExpressionParserSpec extends Specification
       )
     }
 
+    "Parse NULL literals" >> {
+      Parse("NULL") should be equalTo(
+        NullPrimitive()
+      )
+    }
+
     "Parse Variables" >> {
       Parse("A") should be equalTo(
         Column(Name("A"))
@@ -84,6 +90,29 @@ class ExpressionParserSpec extends Specification
       Parse("'Foo'") should be equalTo(StringPrimitive("Foo"))
       Parse("'Foo''sball'") should be equalTo(StringPrimitive("Foo'sball"))
       Parse("'(SEX = ''M'' ) OR ( SEX = ''F'')'") should be equalTo(StringPrimitive("(SEX = 'M' ) OR ( SEX = 'F')"))
+    }
+
+    "Parse IN Expressions" >> {
+      Parse("R IN ('1', '2', '3')") should be equalTo(
+        InExpression(
+          Column(Name("R")), 
+          Left(Seq(
+            StringPrimitive("1"),
+            StringPrimitive("2"),
+            StringPrimitive("3")
+          ))
+        )
+      )
+      Parse("R.`_c1` IN ('1', '2', '3')") should be equalTo(
+        InExpression(
+          Column(Name("_c1", true), Some(Name("R"))), 
+          Left(Seq(
+            StringPrimitive("1"),
+            StringPrimitive("2"),
+            StringPrimitive("3")
+          ))
+        )
+      )
     }
 
     "Parse CASE Expressions" >> {
