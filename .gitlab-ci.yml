@@ -9,4 +9,4 @@ deploy:
   only: 
     - master
   script:
-    - sbt publish
+    - sbt +publish
