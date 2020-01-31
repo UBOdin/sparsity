@@ -1,9 +1,10 @@
 import scala.sys.process._
 
 name := "Sparsity"
-version := "1.7-SNAPSHOT"
+version := "1.6.3"
 organization := "info.mimirdb"
 scalaVersion := "2.11.11"
+crossScalaVersions := Seq("2.11.11", "2.12.7")
 
 dependencyOverrides += "org.scala-lang" % "scala-library" % scalaVersion.value
 
@@ -15,7 +16,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging"    %%  "scala-logging-slf4j"      % "2.1.2",
   "ch.qos.logback"                %   "logback-classic"          % "1.1.7",
   "org.specs2"                    %%  "specs2-core"              % "3.8.4" % "test",
-  "org.specs2"                    %%  "specs2-matcher-extra"     % "3.8.4" % "test",
+  // "org.specs2"                    %%  "specs2-matcher-extra"     % "3.8.4" % "test",
   "org.specs2"                    %%  "specs2-junit"             % "3.8.4" % "test"
 )
 
