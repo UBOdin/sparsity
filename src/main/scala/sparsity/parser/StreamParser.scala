@@ -4,7 +4,7 @@ import scala.collection.mutable.Buffer
 import scala.io._
 import java.io._
 import fastparse._, NoWhitespace._
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import com.typesafe.scalalogging.LazyLogging
 
 class StreamParser[R](parser:(Iterator[String] => Parsed[R]), source: Reader)
   extends Iterator[Parsed[R]]

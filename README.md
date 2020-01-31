@@ -17,3 +17,10 @@ val tree = SQL("SELECT * FROM R")
 ```
 libraryDependencies ++= Seq("info.mimirdb" %% "sparsity" % "1.5")
 ```
+
+
+## Version History
+
+
+#### 1.7 (Breaking)
+- Added cross-compiled support for Scala 2.12
