@@ -1,7 +1,7 @@
 package sparsity.expression
 
 import sparsity.Name
-
+import sparsity.json.{ Path => JsonPath, Expression => JsonExpressionBase }
 sealed abstract class Expression
 { 
   def needsParenthesis: Boolean 
@@ -360,4 +360,13 @@ case class InExpression(
         case Right(query) => Right(query)
       }
     ) 
+}
+
+case class JsonExpression(json: JsonExpressionBase)
+  extends Expression
+{
+  override def toString = json.toString
+  def needsParenthesis = false
+  def children = json.children
+  def rebuild(c: Seq[Expression]) = JsonExpression(json.rebuild(c))
 }

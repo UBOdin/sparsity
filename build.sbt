@@ -3,8 +3,8 @@ import scala.sys.process._
 name := "Sparsity"
 version := "1.7.1-SNAPSHOT"
 organization := "info.mimirdb"
-scalaVersion := "2.11.11"
-crossScalaVersions := Seq("2.11.11", "2.12.7")
+scalaVersion := "2.12.10"
+crossScalaVersions := Seq("2.11.11", "2.12.10 ")
 
 dependencyOverrides += "org.scala-lang" % "scala-library" % scalaVersion.value
 

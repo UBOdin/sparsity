@@ -25,7 +25,7 @@ object SQL
 
   def statement[_:P]: P[Statement] = 
     P( 
-      Pass()~ // This trims off leading whitespace
+      Pass ~ // This trims off leading whitespace
       ( parenthesizedSelect.map { Select(_) }
       | update
       | delete

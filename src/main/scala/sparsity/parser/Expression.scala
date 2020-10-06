@@ -130,6 +130,7 @@ object Expression
 
   def leaf[_:P]: P[Expression] = P( 
     parens | 
+    Json.expression.map { JsonExpression(_) } |
     primitive | 
     jdbcvar |
     caseWhen | ifThenElse |
@@ -143,6 +144,8 @@ object Expression
   def parens[_:P] = P( 
     ( "(" ~ expression ~ ")" )
   )
+
+
 
   def primitive[_:P] = P( 
       Elements.integer.map { v => LongPrimitive(v) } 
