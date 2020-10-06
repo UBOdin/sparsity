@@ -37,17 +37,6 @@ class JsonSpec extends Specification
 
   "parse expressions" >> {
     Fragment.foreach(Seq(
-      """
-        JSON_TABLE(foo, $.bar) COLUMNS(
-          bla varchar PATH $.bla, 
-          baz varchar EXISTS PATH $.baz,
-          hesh varchar FORMAT JSON WITH UNCONDITIONAL ARRAY WRAPPER PATH $.hesh[*],
-          NESTED PATH $.foozball COLUMNS(
-            cookie varchar PATH $.cookie
-          ),
-          idx FOR ORDINALITY
-        )
-      """,
       "JSON_QUERY(foo, $.bar.* WITH UNCONDITIONAL ARRAY WRAPPER)",
       "JSON_VALUE(foo, $.bar.*)",
       "JSON_EXISTS(foo, $.bar.*)",
@@ -62,5 +51,24 @@ class JsonSpec extends Specification
       }
     }
   }
+
+  "parse table definitions" >> {
+    val test = """
+        JSON_TABLE(foo, $.bar) COLUMNS(
+          bla varchar PATH $.bla, 
+          baz varchar EXISTS PATH $.baz,
+          hesh varchar FORMAT JSON WITH UNCONDITIONAL ARRAY WRAPPER PATH $.hesh[*],
+          NESTED PATH $.foozball COLUMNS(
+            cookie varchar PATH $.cookie
+          ),
+          idx FOR ORDINALITY
+        )
+      """
+    parse(test, Json.table(_)) match {
+      case err:Parsed.Failure => 
+        ko(s"Path parse failure: ${err.extra.trace().longAggregateMsg}")
+      case Parsed.Success(result, _) => 
+        result.toString must beEqualTo(test).ignoreSpace
+    }  }
 
 }

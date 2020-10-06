@@ -9,20 +9,6 @@ sealed trait Expression
   def rebuild(c: Seq[SparsityExpression]): Expression
 }
 
-case class JsonTable(
-  target: SparsityExpression, 
-  path: Path, 
-  columns: Seq[Column]
-)
-  extends Expression
-{
-  override def toString =
-    s"JSON_TABLE($target, $path) COLUMNS(${columns.mkString(",")})"
-  def needsParenthesis = false
-  def children = Seq(target)
-  def rebuild(c: Seq[SparsityExpression]) = JsonTable(c.head, path, columns)
-}
-
 sealed trait PrimitiveExpression extends Expression
 
 case class JsonExists(
@@ -58,6 +44,8 @@ case class JsonValue(
   dataType: Name = Name("varchar2")
 ) extends PrimitiveExpression
 {
+  override def toString =
+    s"JSON_VALUE($target, $path)"
   def children: Seq[SparsityExpression] = Seq()
   def rebuild(c: Seq[SparsityExpression]): Expression = this
 }

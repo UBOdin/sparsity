@@ -48,6 +48,7 @@ object Elements
       "JSON_QUERY",
       "JSON_TABLE",
       "JSON_VALUE",
+      "JSON_EXISTS",
       "KEY",
       "LEFT",
       "LIMIT",

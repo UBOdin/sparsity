@@ -264,6 +264,9 @@ object SQL
         case (from, None)        => from
         case (from, Some(alias)) => from.withAlias(alias)
       })
+    | (Json.table ~ alias).map { case (spec, alias) => 
+        FromJson(alias, spec)
+      }
   )
 
   def joinWith[_:P]: P[Join.Type] = P(

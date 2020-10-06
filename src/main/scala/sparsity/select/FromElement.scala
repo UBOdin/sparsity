@@ -2,6 +2,7 @@ package sparsity.select
 
 import sparsity.Name
 import sparsity.expression.{Expression, BooleanPrimitive}
+import sparsity.json.JsonTable
 
 sealed abstract class FromElement
 {
@@ -65,4 +66,14 @@ object Join extends Enumeration
     case RightOuter => "RIGHT OUTER JOIN"
     case FullOuter => "FULL OUTER JOIN"
   }
+}
+
+case class FromJson(
+  alias: Name, 
+  spec: JsonTable
+)
+  extends FromElement
+{
+  def aliases = Seq(alias)
+  def withAlias(newAlias: Name) = FromJson(newAlias, spec)
 }

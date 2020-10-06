@@ -12,13 +12,14 @@ object Json
 
   def expression[_:P]: P[Expression] = P(
     Pass ~ (
-      jsonTable | 
-      jsonValue 
+      jsonQuery | 
+      jsonValue |
+      jsonExists
     )
   )
 
-  def jsonTable[_:P] = P(
-    (
+  def table[_:P] = P(
+    Pass ~ (
       Keyword("JSON_TABLE") ~/ 
       "(" ~/
       Expression.expression ~ 
@@ -35,7 +36,7 @@ object Json
     }
   )
 
-  def jsonValue[_:P] = P(
+  def jsonQuery[_:P] = P(
     (
       Keyword("JSON_QUERY") ~/
       "(" ~/
@@ -60,6 +61,51 @@ object Json
         path, 
         wrapper.getOrElse { NoWrapper() }, 
         dataType.getOrElse { Name("varchar2") }
+      )
+    }
+  )
+
+  def jsonValue[_:P] = P(
+    (
+      Keyword("JSON_VALUE") ~/
+      "(" ~/
+      Expression.expression ~
+      (
+        Keyword("FORMAT") ~/
+        Keyword("JSON")
+      ).? ~
+      "," ~/
+      path ~
+      (
+        Keyword("RETURNING") ~/
+        Elements.identifier
+      ).? ~
+      ")"
+    ).map { case (expr, path, dataType) =>
+      JsonValue(
+        expr, 
+        path,
+        dataType.getOrElse { Name("varchar2") }
+      )
+    }
+  )
+
+  def jsonExists[_:P] = P(
+    (
+      Keyword("JSON_EXISTS") ~/
+      "(" ~/
+      Expression.expression ~
+      (
+        Keyword("FORMAT") ~/
+        Keyword("JSON")
+      ).? ~
+      "," ~/
+      path ~
+      ")"
+    ).map { case (expr, path) =>
+      JsonExists(
+        expr, 
+        path
       )
     }
   )
