@@ -10,6 +10,8 @@ case class Path(elements: Seq[PathElement])
   override def toString = "$"+elements.mkString
   def isSingleton = elements.forall { _.isSingleton }
   def ++(other: Path) = Path(elements ++ other.elements)
+  def head: PathElement = elements.head
+  def tail: Path = Path(elements.tail)
 }
 
 /**
