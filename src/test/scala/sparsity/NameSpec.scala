@@ -1,19 +1,14 @@
 package sparsity
 
 import org.specs2.mutable.Specification
+import sparsity.common.Name
 
-object NameSpecUtils
-{
-  var testData = Map[Name,String](
-        Name("bob") -> "SOMETHING",
-        Name("alice", true) -> "SOMETHINGELSE"
-      )
+object NameSpecUtils {
+  var testData = Map[Name, String](Name("bob") -> "SOMETHING", Name("alice", true) -> "SOMETHINGELSE")
   var testMap = (name: Name) => testData.get(name)
 }
 
-class NameSpec extends Specification
-{
-
+class NameSpec extends Specification {
 
   "Sparsity Names" should {
 
@@ -36,10 +31,7 @@ class NameSpec extends Specification
     }
 
     "Support Map Lookups" >> {
-      val data = Map[Name,String](
-        Name("bob") -> "SOMETHING",
-        Name("alice", true) -> "SOMETHINGELSE"
-      )
+      val data = Map[Name, String](Name("bob") -> "SOMETHING", Name("alice", true) -> "SOMETHINGELSE")
 
       data should haveKey(Name("bob"))
       data should haveKey(Name("BOB"))

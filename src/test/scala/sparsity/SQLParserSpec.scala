@@ -4,61 +4,60 @@ import org.specs2.mutable._
 import org.specs2.specification._
 import org.specs2.specification.core.Fragments
 import org.specs2.execute.Result
-import sparsity.statement._
-import sparsity.select._
-import sparsity.parser.{SQL, Expression}
+import sparsity.common.statement._
+import sparsity.common.select._
+import sparsity.common.parser.SQL
+import sparsity.ansi.ANSISQL
 import fastparse.Parsed
-import sparsity.expression.{LongPrimitive, StringPrimitive, Column}
+import sparsity.common.expression.{Column, Expression, LongPrimitive, StringPrimitive}
+import sparsity.common.Name
 
 import scala.io._
 import java.io._
 
-class SQLParserSpec extends Specification
-{
+class SQLParserSpec extends Specification {
 
-  def testSelect(s: String)(body: SelectBody => Result) = {
+  def testSelect(s: String)(body: SelectBody => Result) =
     SQL(s) match {
       case Parsed.Success(result, index) =>
         body(result.asInstanceOf[Select].body)
-      case f@Parsed.Failure(error, index, extra) =>
+      case f @ Parsed.Failure(error, index, extra) =>
         throw new RuntimeException(f.trace().longMsg)
     }
-  }
   def statement[Q](s: String)(body: Q => Result) =
-  {
-    SQL(s) match{
+    SQL(s) match {
       case Parsed.Success(result, index) =>
         body(result.asInstanceOf[Q])
-      case f@Parsed.Failure(error, index, extra) =>
+      case f @ Parsed.Failure(error, index, extra) =>
         throw new RuntimeException(f.trace().longMsg)
     }
-  }
-  def streamSelect(input: Reader):Iterator[SelectBody] = {
+  def streamSelect(input: Reader): Iterator[SelectBody] =
     SQL(input).map {
       case Parsed.Success(result, index) =>
         result.asInstanceOf[Select].body
-      case f@Parsed.Failure(error, index, extra) =>
+      case f @ Parsed.Failure(error, index, extra) =>
         throw new RuntimeException(f.trace().longMsg)
     }
-  }
 
-  def e = Expression(_)
-  def et(s:String):SelectTarget = SelectExpression(e(s))
-  def f(t:Name):FromElement                 = FromTable(None, t, None)
-  def f(t:Name, a:Name):FromElement         = FromTable(None, t, Some(a))
-  def f(t:Name, a:Name, s:Name):FromElement = FromTable(Some(s), t, Some(a))
-  def asc(s:String) = OrderBy(e(s), true)
-  def desc(s:String) = OrderBy(e(s), false)
+  def e(s: String): Expression =
+    fastparse.parse(s, ANSISQL.instance.expression(_)) match {
+      case fastparse.Parsed.Success(expr, _) => expr
+      case f: fastparse.Parsed.Failure => throw new sparsity.common.parser.ParseException(f)
+    }
+  def et(s: String): SelectTarget = SelectExpression(e(s))
+  def f(t: Name): FromElement = FromTable(None, t, None)
+  def f(t: Name, a: Name): FromElement = FromTable(None, t, Some(a))
+  def f(t: Name, a: Name, s: Name): FromElement = FromTable(Some(s), t, Some(a))
+  def asc(s: String) = OrderBy(e(s), true)
+  def desc(s: String) = OrderBy(e(s), false)
 
-  implicit def StringToName(s:String): Name = Name(s)
+  implicit def StringToName(s: String): sparsity.common.Name = sparsity.common.Name(s)
 
   "The SELECT Parser" should {
 
     "Parse basic SELECT queries" >> {
       testSelect("SELECT 1;") { q =>
-        q.target should contain(exactly(
-          et("1")
-        ))
+        q.target should contain(exactly(et("1")))
       }
 
       testSelect("SELECT A FROM R;") { q =>
@@ -67,67 +66,59 @@ class SQLParserSpec extends Specification
       }
 
       testSelect("SELECT A, 1 FROM R AS Foo, S.Q AS Bar;") { q =>
-        q.target should contain(exactly(
-          et("A"),
-          et("1")
-        ))
-        q.from should contain(exactly(
-          f("R", "Foo"),
-          f("Q", "Bar", "S")
-        ))
+        q.target should contain(exactly(et("A"), et("1")))
+        q.from should contain(exactly(f("R", "Foo"), f("Q", "Bar", "S")))
       }
 
       testSelect("SELECT A FROM R WHERE B = 1;") { q =>
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
-        q.where should beEqualTo( Some(e("B=1")) )
+        q.where should beEqualTo(Some(e("B=1")))
       }
 
       testSelect("SELECT A FROM R ORDER BY A, B DESC;") { q =>
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
-        q.orderBy should beEqualTo( Seq(asc("A"), desc("B")) )
+        q.orderBy should beEqualTo(Seq(asc("A"), desc("B")))
       }
 
       testSelect("SELECT A FROM R ORDER BY A, B LIMIT 5;") { q =>
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
-        q.orderBy should beEqualTo( Seq(asc("A"), asc("B")) )
-        q.limit should beEqualTo( Some(5) )
+        q.orderBy should beEqualTo(Seq(asc("A"), asc("B")))
+        q.limit should beEqualTo(Some(5))
       }
 
       testSelect("SELECT A FROM R ORDER BY A, B OFFSET 5;") { q =>
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
-        q.orderBy should beEqualTo( Seq(asc("A"), asc("B")) )
-        q.offset should beEqualTo( Some(5) )
+        q.orderBy should beEqualTo(Seq(asc("A"), asc("B")))
+        q.offset should beEqualTo(Some(5))
       }
 
       testSelect("SELECT A FROM R ORDER BY A, B LIMIT 5 OFFSET 5;") { q =>
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
-        q.orderBy should beEqualTo( Seq(asc("A"), asc("B")) )
-        q.offset should beEqualTo( Some(5) )
-        q.limit should beEqualTo( Some(5) )
+        q.orderBy should beEqualTo(Seq(asc("A"), asc("B")))
+        q.offset should beEqualTo(Some(5))
+        q.limit should beEqualTo(Some(5))
       }
 
       testSelect("SELECT DOB FROM DetectSeriesTest2 WHERE Rank = 1 ORDER BY DOB;") { q =>
-        q.orderBy should beEqualTo( Seq(asc("DOB")) )
+        q.orderBy should beEqualTo(Seq(asc("DOB")))
       }
     }
 
-    "Parse SELECT queries with partial keywords" >>
-    {
+    "Parse SELECT queries with partial keywords" >> {
       testSelect("SELECT NOTE FROM R;") { q =>
-        q.target should contain(exactly(SelectExpression(Column("NOTE")):SelectTarget))
+        q.target should contain(exactly(SelectExpression(Column("NOTE")): SelectTarget))
       }
       testSelect("SELECT CASE_NUMBER FROM R;") { q =>
-        q.target should contain(exactly(SelectExpression(Column("CASE_NUMBER")):SelectTarget))
+        q.target should contain(exactly(SelectExpression(Column("CASE_NUMBER")): SelectTarget))
       }
     }
 
-    "Parse SELECT queries with quoted identifiers" >>
-    {
+    "Parse SELECT queries with quoted identifiers" >> {
       testSelect("SELECT `RANGE` AS `RANGE` FROM R;") { q =>
         q.target should contain(SelectExpression(e("`RANGE`"), Some(Name("RANGE", true))))
       }
@@ -154,7 +145,7 @@ class SQLParserSpec extends Specification
     }
 
     "Parse Union queries" >> {
-      testSelect("SELECT A FROM R UNION ALL SELECT A FROM S;"){ q =>
+      testSelect("SELECT A FROM R UNION ALL SELECT A FROM S;") { q =>
         q.target should contain(exactly(et("A")))
         q.from should contain(exactly(f("R")))
         q.union must not(beNone)
@@ -166,25 +157,19 @@ class SQLParserSpec extends Specification
     }
 
     "Parse Nested queries" >> {
-      testSelect("SELECT A FROM (SELECT A FROM R) Q;"){ q =>
+      testSelect("SELECT A FROM (SELECT A FROM R) Q;") { q =>
         q.target should contain(exactly(et("A")))
-        q.from should contain(exactly(
-          FromSelect(
-            SelectBody(
-              target = Seq(et("A")),
-              from = Seq(f("R"))
-            ),
-            Name("Q")
-          ):FromElement
-        ))
+        q.from should contain(
+          exactly(FromSelect(SelectBody(target = Seq(et("A")), from = Seq(f("R"))), Name("Q")): FromElement)
+        )
       }
     }
 
     "Parse JOIN queries" >> {
-      testSelect("SELECT R.A, S.C FROM R NATURAL JOIN S ON R.B = S.B;"){ q =>
+      testSelect("SELECT R.A, S.C FROM R NATURAL JOIN S ON R.B = S.B;") { q =>
         q.from(0) should beAnInstanceOf[FromJoin]
       }
-      testSelect("SELECT R.A, S.C FROM R JOIN S ON R.B = S.B;"){ q =>
+      testSelect("SELECT R.A, S.C FROM R JOIN S ON R.B = S.B;") { q =>
         q.from(0) should beAnInstanceOf[FromJoin]
       }
     }
@@ -198,7 +183,7 @@ class SQLParserSpec extends Specification
       selects.next.target should contain(exactly(et("MIN(A)")))
       selects.next.target should contain(exactly(et("MAX(A)")))
 
-      while(selects.hasNext) { selects.next }
+      while (selects.hasNext) selects.next
       ok
 
     }
@@ -216,24 +201,23 @@ SELECT A, B FROM R;""") { q =>
 
     "Parse queries with quoted strings" >> {
       testSelect("""SELECT '''foo''';""") { q =>
-        q.target should contain(exactly(SelectExpression(StringPrimitive("'foo'")):SelectTarget))
+        q.target should contain(exactly(SelectExpression(StringPrimitive("'foo'")): SelectTarget))
       }
 
     }
 
     "Parse queries with schema-ed tables" >> {
       testSelect("""SELECT A FROM schema.R;""") { q =>
-        q.from should contain(exactly(FromTable(Some(Name("schema")), Name("R"), None):FromElement))
+        q.from should contain(exactly(FromTable(Some(Name("schema")), Name("R"), None): FromElement))
       }
     }
 
     "Parse queries with IN expressions" >> {
       testSelect("SELECT `_c1` FROM R WHERE `R`.`_c0` IN ('2','3','4');") { q =>
-        q.where.get should beAnInstanceOf[sparsity.expression.InExpression]
+        q.where.get should beAnInstanceOf[sparsity.common.expression.InExpression]
       }
 
     }
-
 
   }
 
@@ -242,32 +226,29 @@ SELECT A, B FROM R;""") { q =>
     "parse UPDATE statements" >> {
 
       statement[Update]("UPDATE foo SET bar = foo.baz + 2 WHERE foo.zing < 2;") { stmt =>
-          stmt.table must beEqualTo(Name("foo"))
-          stmt.set must contain(exactly((Name("bar"), e("foo.baz + 2"))))
-          stmt.where must beEqualTo(Some(e("foo.zing < 2")))
+        stmt.table must beEqualTo(Name("foo"))
+        stmt.set must contain(exactly((Name("bar"), e("foo.baz + 2"))))
+        stmt.where must beEqualTo(Some(e("foo.zing < 2")))
       }
       statement[Update]("UPDATE foo SET bar = foo.baz + 2;") { stmt =>
-          stmt.table must beEqualTo(Name("foo"))
-          stmt.set must contain(exactly((Name("bar"), e("foo.baz + 2"))))
-          stmt.where must beEqualTo(None)
+        stmt.table must beEqualTo(Name("foo"))
+        stmt.set must contain(exactly((Name("bar"), e("foo.baz + 2"))))
+        stmt.where must beEqualTo(None)
       }
       statement[Update]("UPDATE foo SET bar = foo.baz + 2, zing = 29;") { stmt =>
-          stmt.table must beEqualTo(Name("foo"))
-          stmt.set must contain(exactly(
-            (Name("bar"), e("foo.baz + 2")),
-            (Name("zing"), e("29"))
-          ))
+        stmt.table must beEqualTo(Name("foo"))
+        stmt.set must contain(exactly((Name("bar"), e("foo.baz + 2")), (Name("zing"), e("29"))))
       }
 
     }
 
     "parse DELETE statements" >> {
 
-      statement[Delete]("DELETE FROM foo;"){ stmt =>
+      statement[Delete]("DELETE FROM foo;") { stmt =>
         stmt.table must beEqualTo(Name("foo"))
         stmt.where must beEqualTo(None)
       }
-      statement[Delete]("DELETE FROM foo WHERE baz<2;"){ stmt =>
+      statement[Delete]("DELETE FROM foo WHERE baz<2;") { stmt =>
         stmt.table must beEqualTo(Name("foo"))
         stmt.where must beEqualTo(Some(e("baz < 2")))
       }
@@ -276,41 +257,22 @@ SELECT A, B FROM R;""") { q =>
 
     "parse INSERT statements" >> {
 
-      statement[Insert]("INSERT INTO foo(bar, baz) VALUES (1, 2);"){ stmt =>
+      statement[Insert]("INSERT INTO foo(bar, baz) VALUES (1, 2);") { stmt =>
         stmt.table must beEqualTo(Name("foo"))
-        stmt.columns.get must contain(exactly(
-          Name("bar"), Name("baz")
-        ))
-        stmt.values must beEqualTo(
-          ExplicitInsert(Seq(Seq(
-            LongPrimitive(1), LongPrimitive(2)
-          )))
-        )
+        stmt.columns.get must contain(exactly(Name("bar"), Name("baz")))
+        stmt.values must beEqualTo(ExplicitInsert(Seq(Seq(LongPrimitive(1), LongPrimitive(2)))))
         stmt.orReplace must beEqualTo(false)
       }
-      statement[Insert]("INSERT INTO foo(bar) VALUES (1), (2);"){ stmt =>
+      statement[Insert]("INSERT INTO foo(bar) VALUES (1), (2);") { stmt =>
         stmt.table must beEqualTo(Name("foo"))
-        stmt.columns.get must contain(exactly(
-          Name("bar")
-        ))
-        stmt.values must beEqualTo(
-          ExplicitInsert(Seq(Seq(
-            LongPrimitive(1)
-          ), Seq(
-            LongPrimitive(2)
-          )))
-        )
+        stmt.columns.get must contain(exactly(Name("bar")))
+        stmt.values must beEqualTo(ExplicitInsert(Seq(Seq(LongPrimitive(1)), Seq(LongPrimitive(2)))))
         stmt.orReplace must beEqualTo(false)
       }
-      statement[Insert]("INSERT OR REPLACE INTO foo SELECT 1 FROM foo;"){ stmt =>
+      statement[Insert]("INSERT OR REPLACE INTO foo SELECT 1 FROM foo;") { stmt =>
         stmt.table must beEqualTo(Name("foo"))
         stmt.columns must beEqualTo(None)
-        stmt.values must beEqualTo(
-          SelectInsert(SelectBody(
-            target = Seq(et("1")),
-            from = Seq(f("foo"))
-          ))
-        )
+        stmt.values must beEqualTo(SelectInsert(SelectBody(target = Seq(et("1")), from = Seq(f("foo")))))
         stmt.orReplace must beEqualTo(true)
       }
 
@@ -327,20 +289,16 @@ SELECT A, B FROM R;""") { q =>
           INDEX ON (foo, baz)
         );""") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
-        stmt.columns must contain(exactly(
-          ColumnDefinition(Name("bar"), Name("int")),
-          ColumnDefinition(Name("baz"), Name("string"), annotations = Seq(
-            ColumnDefaultValue(e("'foo'"))
-          )),
-          ColumnDefinition(Name("broz"), Name("int"), annotations = Seq(
-            ColumnIsNotNullable(),
-            ColumnIsPrimaryKey()
-          ))
-        ))
-        stmt.annotations must contain(exactly(
-          TableIndexOn(Seq(Name("baz"))):TableAnnotation,
-          TableIndexOn(Seq(Name("foo"), Name("baz")))
-        ))
+        stmt.columns must contain(
+          exactly(
+            ColumnDefinition(Name("bar"), Name("int")),
+            ColumnDefinition(Name("baz"), Name("string"), annotations = Seq(ColumnDefaultValue(e("'foo'")))),
+            ColumnDefinition(Name("broz"), Name("int"), annotations = Seq(ColumnIsNotNullable(), ColumnIsPrimaryKey()))
+          )
+        )
+        stmt.annotations must contain(
+          exactly(TableIndexOn(Seq(Name("baz"))): TableAnnotation, TableIndexOn(Seq(Name("foo"), Name("baz"))))
+        )
       }
     }
 
@@ -354,17 +312,13 @@ SELECT A, B FROM R;""") { q =>
     }
 
     "parse CREATE VIEW statements" >> {
-      statement[CreateView](
-        "CREATE VIEW foo AS SELECT * FROM bar;"
-      ) { stmt =>
+      statement[CreateView]("CREATE VIEW foo AS SELECT * FROM bar;") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
         stmt.query.from must contain(exactly(f("bar")))
         stmt.orReplace must beFalse
         stmt.temporary must beFalse
       }
-      statement[CreateView](
-        "CREATE OR REPLACE VIEW foo AS SELECT * FROM bar;"
-      ) { stmt =>
+      statement[CreateView]("CREATE OR REPLACE VIEW foo AS SELECT * FROM bar;") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
         stmt.query.from must contain(exactly(f("bar")))
         stmt.orReplace must beTrue
@@ -373,17 +327,13 @@ SELECT A, B FROM R;""") { q =>
     }
 
     "parse CREATE TEMPORARY VIEW statements" >> {
-      statement[CreateView](
-        "CREATE TEMPORARY VIEW foo AS SELECT * FROM bar;"
-      ) { stmt =>
+      statement[CreateView]("CREATE TEMPORARY VIEW foo AS SELECT * FROM bar;") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
         stmt.query.from must contain(exactly(f("bar")))
         stmt.orReplace must beFalse
         stmt.temporary must beTrue
       }
-      statement[CreateView](
-        "CREATE OR REPLACE VIEW foo AS SELECT * FROM bar;"
-      ) { stmt =>
+      statement[CreateView]("CREATE OR REPLACE VIEW foo AS SELECT * FROM bar;") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
         stmt.query.from must contain(exactly(f("bar")))
         stmt.orReplace must beTrue
@@ -391,27 +341,19 @@ SELECT A, B FROM R;""") { q =>
     }
 
     "parse DROP TABLE statements" >> {
-      statement[DropTable](
-        "DROP TABLE foo;"
-      ) { stmt =>
+      statement[DropTable]("DROP TABLE foo;") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
       }
-      statement[DropTable](
-        "DROP TABLE IF EXISTS foo;"
-      ) { stmt =>
+      statement[DropTable]("DROP TABLE IF EXISTS foo;") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
       }
     }
 
     "parse DROP VIEW statements" >> {
-      statement[DropView](
-        "DROP VIEW foo;"
-      ) { stmt =>
+      statement[DropView]("DROP VIEW foo;") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
       }
-      statement[DropView](
-        "DROP VIEW IF EXISTS foo;"
-      ) { stmt =>
+      statement[DropView]("DROP VIEW IF EXISTS foo;") { stmt =>
         stmt.name must beEqualTo(Name("foo"))
       }
     }
