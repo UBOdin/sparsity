@@ -78,6 +78,7 @@ object Elements
       "UNCONDITIONAL",
       "UNION",
       "UPDATE",
+      "UNION",
       "VALUES",
       "VIEW",
       "WHEN",
@@ -89,47 +90,47 @@ object Elements
     ).! ~ !CharIn("a-zA-Z0-9_") 
   )
 
-  def keyword[_:P](expected: String*) = P[Unit](
+  def keyword[$: P](expected: String*) = P[Unit](
     anyKeyword.opaque(expected.mkString(" or "))
               .filter { kw => expected.exists { _.equalsIgnoreCase(kw) } }
               .map { _ => () }
   )
 
-  def avoidReservedKeywords[_:P] = P(
+  def avoidReservedKeywords[$: P] = P(
     !anyKeyword 
   )
 
-  def rawIdentifier[_:P] = P(
+  def rawIdentifier[$: P] = P(
     avoidReservedKeywords ~
     (CharIn("_a-zA-Z") ~ CharsWhileIn("a-zA-Z0-9_").?).!.map { Name(_) }
   )
-  def quotedIdentifier[_:P] = P(
+  def quotedIdentifier[$: P] = P(
     ( ("`" ~/ CharsWhile( _ != '`' ).! ~ "`")
     | ("\"" ~/ CharsWhile( _ != '"' ).! ~ "\"")
     ).map { Name(_, true) }
   )
-  def identifier[_:P]: P[Name] = P( rawIdentifier | quotedIdentifier )
+  def identifier[$: P]: P[Name] = P( rawIdentifier | quotedIdentifier )
 
-  def dottedPair[_:P]: P[(Option[Name],Name)] = P(
+  def dottedPair[$: P]: P[(Option[Name],Name)] = P(
     (identifier ~ ("." ~ identifier).?).map { 
       case (x, None)    => (None, x)
       case (x, Some(y)) => (Some(x), y)
     }
   )
-  def dottedWildcard[_:P]: P[Name] = P(
+  def dottedWildcard[$: P]: P[Name] = P(
     identifier ~ ".*"
   )
-  def digits[_:P] = P( CharsWhileIn("0-9") )
-  def plusMinus[_:P] = P( "-" | "+" )
-  def integral[_:P] = ("0" | CharIn("1-9") ~ digits.?)
+  def digits[$: P] = P( CharsWhileIn("0-9") )
+  def plusMinus[$: P] = P( "-" | "+" )
+  def integral[$: P] = ("0" | CharIn("1-9") ~ digits.?)
 
-  def integer[_:P] = (plusMinus.? ~ digits).!.map { _.toLong } ~ !(".") // Fail on a trailing period
-  def decimal[_:P] = (plusMinus.? ~ digits ~ ("." ~ digits).? ~ ("e"~plusMinus.? ~ digits).?).!.map { _.toDouble }
+  def integer[$: P] = (plusMinus.? ~ digits).!.map { _.toLong } ~ !(".") // Fail on a trailing period
+  def decimal[$: P] = (plusMinus.? ~ digits ~ ("." ~ digits).? ~ ("e"~plusMinus.? ~ digits).?).!.map { _.toDouble }
 
-  def escapeQuote[_: P] = P( ("''").!.map { _.replaceAll("''", "'") } )
-  def escapedString[_:P] = P( ( CharsWhile( _ != '\'' ) | escapeQuote ).rep.!.map { _.replaceAll("''", "'") } )
-  def quotedString[_:P] = P("'" ~ escapedString ~ "'")
+  def escapeQuote[$: P] = P( ("''").!.map { _.replaceAll("''", "'") } )
+  def escapedString[$: P] = P( ( CharsWhile( _ != '\'' ) | escapeQuote ).rep.!.map { _.replaceAll("''", "'") } )
+  def quotedString[$: P] = P("'" ~ escapedString ~ "'")
 
-  def whitespace[_:P] = CharIn(" \n\t\r").rep
-  def comma[_:P] = P("," ~ whitespace)
+  def whitespace[$: P] = CharIn(" \n\t\r").rep
+  def comma[$: P] = P("," ~ whitespace)
 }

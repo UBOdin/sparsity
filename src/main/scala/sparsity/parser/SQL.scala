@@ -13,17 +13,17 @@ import sparsity.parser.Elements.{keyword => Keyword}
 
 object SQL
 {
-  def apply(input: String) = parse(input, terminatedStatement(_))
-  def apply(input: Reader) = 
+  def apply(input: String): Parsed[Statement] = parse(input, terminatedStatement(_))
+  def apply(input: Reader): StreamParser[Statement] =
     new StreamParser[Statement](
       parse(_:Iterator[String], terminatedStatement(_), verboseFailures = true), 
       input
     )
 
-  def terminatedStatement[_:P]: P[Statement] = 
+  def terminatedStatement[$: P]: P[Statement] =
     P( statement ~ ";" )
 
-  def statement[_:P]: P[Statement] = 
+  def statement[$: P]: P[Statement] =
     P( 
       Pass ~ // This trims off leading whitespace
       ( parenthesizedSelect.map { Select(_) }
@@ -42,17 +42,17 @@ object SQL
       )
     )
 
-  def explain[_:P] = P(
+  def explain[$: P] = P(
     Keyword("EXPLAIN") ~ select.map { Explain(_) }
   )
 
-  def ifExists[_:P]:P[Boolean] = P(
+  def ifExists[$: P]:P[Boolean] = P(
     (Keyword("IF") ~
       Keyword("EXISTS")
     ).!.?.map { _ != None }
   )
 
-  def alterView[_:P] = P(
+  def alterView[$: P] = P(
     (
       Keyword("ALTER") ~
       Keyword("VIEW") ~/
@@ -65,7 +65,7 @@ object SQL
     ).map { case (name, op) => AlterView(name, op) }
   )
 
-  def dropTableOrView[_:P] = P(
+  def dropTableOrView[$: P] = P(
     (
       Keyword("DROP") ~
       Keyword("TABLE", "VIEW").!.map { _.toUpperCase } ~/
@@ -81,13 +81,13 @@ object SQL
     }
   )
 
-  def orReplace[_:P]:P[Boolean] = P(
+  def orReplace[$: P]:P[Boolean] = P(
     (Keyword("OR") ~
       Keyword("REPLACE")
     ).!.?.map { _ != None }
   )
 
-  def createView[_:P] = P(
+  def createView[$: P] = P(
     (
       Keyword("CREATE") ~
       orReplace ~
@@ -108,7 +108,7 @@ object SQL
               CreateView(name, orReplace, query, materialized, temporary) }
   )
 
-  def columnAnnotation[_:P]:P[ColumnAnnotation] = P(
+  def columnAnnotation[$: P]:P[ColumnAnnotation] = P(
     (
       Keyword("PRIMARY") ~/
         Keyword("KEY").map { _ => ColumnIsPrimaryKey() }
@@ -124,12 +124,12 @@ object SQL
     )
   )
 
-  def oneOrMoreAttributes[_:P]:P[Seq[Name]] = P(
+  def oneOrMoreAttributes[$: P]:P[Seq[Name]] = P(
     ( "(" ~/ Elements.identifier.rep(sep = Elements.comma, min = 1) ~ ")")
     | Elements.identifier.map { Seq(_) }
   )
 
-  def tableField[_:P]:P[Either[TableAnnotation,ColumnDefinition]] = P(
+  def tableField[$: P]:P[Either[TableAnnotation,ColumnDefinition]] = P(
     (
       Keyword("PRIMARY") ~/
         Keyword("KEY") ~ 
@@ -176,14 +176,14 @@ object SQL
     }
   )
 
-  def valueList[_:P]: P[InsertValues] = P(
+  def valueList[$: P]: P[InsertValues] = P(
     (
       Keyword("VALUES") ~/
       ("(" ~/ ExprParser.expressionList ~ ")").rep(sep = Elements.comma)
     ).map { ExplicitInsert(_) }
   )
 
-  def insert[_:P] = P(
+  def insert[$: P] = P(
     (
       Keyword("INSERT") ~/
       (
@@ -217,7 +217,7 @@ object SQL
     ).map { case (table, where) => Delete(table, where) }
   )
 
-  def update[_:P] = P(
+  def update[$: P] = P(
     (
       Keyword("UPDATE") ~/ 
       Elements.identifier ~ 
@@ -241,11 +241,11 @@ object SQL
     }
   )
 
-  def alias[_:P]: P[Name] = P(
+  def alias[$: P]: P[Name] = P(
     Keyword("AS").? ~ Elements.identifier
   )
 
-  def selectTarget[_:P]: P[SelectTarget] = P(
+  def selectTarget[$: P]: P[SelectTarget] = P(
       P("*").map { _ => SelectAll() } 
       // Dotted wildcard needs a lookahead since a single token isn't
       // enough to distinguish between `foo`.* and `foo` AS `bar`
@@ -269,7 +269,7 @@ object SQL
       }
   )
 
-  def joinWith[_:P]: P[Join.Type] = P(
+  def joinWith[$: P]: P[Join.Type] = P(
       Keyword("JOIN").map { Unit => Join.Inner } 
     | ( (
           Keyword("NATURAL").!.map { Unit => Join.Natural}
@@ -285,7 +285,7 @@ object SQL
       )
   )
 
-  def fromElement[_:P]: P[FromElement] = P(
+  def fromElement[$: P]: P[FromElement] = P(
     (
       simpleFromElement ~ (
         &(joinWith) ~
@@ -311,65 +311,65 @@ object SQL
     }
   )
 
-  def fromClause[_:P] = P(
+  def fromClause[$: P] = P(
     Keyword("FROM") ~/ 
       fromElement.rep(sep = Elements.comma, min=1)
   )
 
-  def whereClause[_:P] = P(
+  def whereClause[$: P] = P(
     Keyword("WHERE") ~/ ExprParser.expression
   )
 
-  def groupByClause[_:P] = P(
+  def groupByClause[$: P] = P(
     Keyword("GROUP") ~/
     Keyword("BY") ~/
     ExprParser.expressionList
   )
 
-  def havingClause[_:P] = P(
+  def havingClause[$: P] = P(
     Keyword("HAVING") ~ ExprParser.expression
   )
 
   def options[A](default: A, options: Map[String, A]): (Option[String] => A) =
     _.map { _.toUpperCase }.map { options(_) }.getOrElse(default)
 
-  def ascOrDesc[_:P] = P(
+  def ascOrDesc[$: P] = P(
     Keyword("ASC", "DESC").!.?.map { 
       options(true, Map("ASC" -> true, "DESC"-> false))
     }
   )
 
-  def orderBy[_:P] = P(
+  def orderBy[$: P] = P(
     ( ExprParser.expression ~ ascOrDesc ).map { x => OrderBy(x._1, x._2) }
   )
 
-  def orderByClause[_:P] = P(
+  def orderByClause[$: P] = P(
     Keyword("ORDER") ~/
       Keyword("BY") ~/
         orderBy.rep(sep = Elements.comma, min = 1)
   )
 
-  def limitClause[_:P] = P(
+  def limitClause[$: P] = P(
     Keyword("LIMIT") ~/
     Elements.integer
   )
 
-  def offsetClause[_:P] = P(
+  def offsetClause[$: P] = P(
     Keyword("OFFSET") ~/
     Elements.integer
   )
 
-  def allOrDistinct[_:P] = P(
+  def allOrDistinct[$: P] = P(
     Keyword("ALL", "DISTINCT").!.?.map { 
       options(Union.Distinct, Map("ALL" -> Union.All, "DISTINCT"-> Union.Distinct))
     }
   )
 
-  def unionClause[_:P] = P(
+  def unionClause[$: P] = P(
     (Keyword("UNION") ~/ allOrDistinct ~/ parenthesizedSelect)
   )
 
-  def parenthesizedSelect[_:P]: P[SelectBody] = P(
+  def parenthesizedSelect[$: P]: P[SelectBody] = P(
     (
       "(" ~/ select ~ ")" ~/ unionClause.?
     ).map { 
@@ -378,7 +378,7 @@ object SQL
     } | select
   )
 
-  def select[_:P]: P[SelectBody] = P( 
+  def select[$: P]: P[SelectBody] = P(
     (
       Keyword("SELECT") ~/ 
       Keyword("DISTINCT").!.?.map { _ != None } ~/

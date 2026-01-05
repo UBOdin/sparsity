@@ -13,18 +13,18 @@ object Expression
       case f:Parsed.Failure => throw new ParseException(f)
     }
 
-  def expressionList[_:P] = P( expression.rep(sep = Elements.comma) )
+  def expressionList[$: P] = P( expression.rep(sep = Elements.comma) )
 
-  def expression[_:P]: P[Expression] = P( disjunction )
+  def expression[$: P]: P[Expression] = P( disjunction )
 
-  def disjunction[_:P] = P(
+  def disjunction[$: P] = P(
     (conjunction ~ (!(Keyword("ORDER")) ~ Keyword("OR") ~ conjunction).rep).map 
       { x => x._2.fold(x._1) { 
         (accum, current) => Arithmetic(accum, Arithmetic.Or, current)
       }
     }
   )
-  def conjunction[_:P] = P(
+  def conjunction[$: P] = P(
     (negation ~ (Keyword("AND") ~ negation).rep).map 
       { x => x._2.fold(x._1) { 
         (accum, current) => Arithmetic(accum, Arithmetic.And, current)
@@ -32,14 +32,14 @@ object Expression
     }
   )
 
-  def negation[_:P] = P(
+  def negation[$: P] = P(
     (Keyword("NOT").!.? ~ comparison).map {
       case (None, expression) => expression
       case (_, expression) => Not(expression)
     }
   )
 
-  def comparison[_:P] = P(
+  def comparison[$: P] = P(
     (isNullBetweenIn ~ 
       (  StringInIgnoreCase(
           "=" , "==", "!=", "<>", ">" , "<" , ">=", "<=", 
@@ -130,7 +130,6 @@ object Expression
 
   def leaf[_:P]: P[Expression] = P( 
     parens | 
-    Json.expression.map { JsonExpression(_) } |
     primitive | 
     jdbcvar |
     caseWhen | ifThenElse |
@@ -144,8 +143,6 @@ object Expression
   def parens[_:P] = P( 
     ( "(" ~ expression ~ ")" )
   )
-
-
 
   def primitive[_:P] = P( 
       Elements.integer.map { v => LongPrimitive(v) } 
