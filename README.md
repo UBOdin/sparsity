@@ -1,3 +1,7 @@
+# 👷 Migration 👷
+
+This repository is now hosted on [Codeberg](https://codeberg.org/UBODIn/sparsity)
+
 # sparsity
 Fast, Free, Pure Scala SQL Parser built with [fastparse](http://www.lihaoyi.com/fastparse/)
 
